@@ -55,7 +55,7 @@ An advanced, privacy-first IT Helpdesk system engineered for enterprise environm
 | Frontend & API | Next.js 16, React 19, TailwindCSS, Framer Motion |
 | Database | Supabase PostgreSQL + `pgvector` + GIN FTS index |
 | ML (Local NER + Embed) | `@xenova/transformers` (WASM) |
-| ML (Classifier) | `onnxruntime-node` (C++ native) + JSON LR fallback |
+| ML (Classifier) | `onnxruntime-web` (WASM) + JSON fallback |
 | LLM Synthesis | Groq API (`llama-3.3-70b-versatile`) |
 | Rate Limiting | Upstash Redis |
 | Training | Python, Scikit-Learn, SentenceTransformers, skl2onnx |
@@ -96,7 +96,7 @@ supabase/seed_skills.sql ← seeds 6 procedural Skill DAGs
 
 ### 4. Train & Export the ONNX Model
 ```bash
-pip install scikit-learn sentence-transformers pandas skl2onnx onnxruntime
+pip install scikit-learn sentence-transformers pandas skl2onnx onnxruntime numpy
 cd scripts
 python train_lr.py
 # Outputs: ../data/lr_model.json AND ../public/models/classifier.onnx
@@ -125,4 +125,4 @@ Navigate to `http://localhost:3000`.
 
 See [`PROJECT_DESCRIPTION.md`](./PROJECT_DESCRIPTION.md) for the full deployment guide (Vercel + Render).
 
-> **Note on `onnxruntime-node`:** This is a native C++ binary. It works perfectly on localhost and Render. On Vercel serverless functions it may hit the 50MB bundle limit — the system automatically falls back to JSON LR weights in that case, guaranteeing zero downtime.
+> **Note on `onnxruntime-web`:** This uses a WebAssembly backend. It works perfectly on localhost, Render, and Vercel serverless functions without hitting the 50MB bundle limits associated with native C++ binaries. The system also supports automatic fallbacks guaranteeing zero downtime.

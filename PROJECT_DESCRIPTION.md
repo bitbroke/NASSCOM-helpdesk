@@ -53,14 +53,14 @@ Fully offline       →  BM25 keyword search + agentic_skills Skill DAG
 
 ## 3. Data Sources & Data Engineering
 
-**Primary Dataset:** 1,304 unique synthetic enterprise IT tickets across 6 categories.
+**Primary Dataset:** 16,338 unique English enterprise IT tickets from the Kaggle Multilingual Customer Support Tickets dataset.
 
 **Pipeline:**
-1. Zero-shot generation via `llama-3.3-70b` with parameterized prompts
-2. CSV parsing with custom newline-escaping for embedded runbooks
+1. Filter Kaggle dataset to English tickets.
+2. CSV parsing mapped to queue, answer, priority.
 3. `SentenceTransformers (bge-small-en-v1.5)` embedding → normalized float arrays
 4. Batch upsert into Supabase `historical_tickets` (includes `embedding vector(384)`)
-5. `train_lr.py` trains `LogisticRegression(C=100.0)` → exports **both** `lr_model.json` (JSON fallback) and `classifier.onnx` (primary inference path)
+5. `train_lr.py` trains `RandomForestClassifier(n_estimators=100, class_weight='balanced')` → exports **both** `lr_model.json` (JSON fallback) and `classifier.onnx` (primary inference path)
 
 ---
 
@@ -203,10 +203,10 @@ stateDiagram-v2
 | Library | Role |
 |---------|------|
 | `@xenova/transformers` | WASM BERT NER + bge-small embedding in Node.js |
-| `onnxruntime-node` | C++ ONNX runtime for `classifier.onnx` inference |
-| `skl2onnx` (Python) | Exports Scikit-Learn LR model to ONNX format |
+| `onnxruntime-web` | WebAssembly ONNX runtime for `classifier.onnx` inference, allowing zero-dependency deploy on Vercel |
+| `skl2onnx` (Python) | Exports Scikit-Learn RF model to ONNX format |
 | `pgvector` | PostgreSQL cosine similarity at DB layer |
-| `Scikit-Learn` | Logistic Regression training (C=100.0) |
+| `Scikit-Learn` | Random Forest training |
 | `Framer Motion` | Micro-animations and UI state transitions |
 | `Next.js 16` | Full-stack React framework with API routes |
 | `Upstash Redis` | Serverless sliding-window rate limiting |
@@ -215,23 +215,20 @@ stateDiagram-v2
 
 ## 9. Deployment Guide
 
-### Option A — Render (Recommended for ONNX)
-
-Render supports native Node.js binaries. `onnxruntime-node` works without any special configuration.
+### Option A — Render (Recommended)
 
 1. Connect your GitHub repo to Render as a **Web Service**
 2. Set **Build Command:** `npm install && npm run build`
 3. Set **Start Command:** `npm start`
 4. Add all environment variables from `.env.local` in the Render dashboard
-5. Ensure `public/models/classifier.onnx` is committed to your repo
 
 ### Option B — Vercel
 
-`onnxruntime-node` is a native C++ binary that may exceed Vercel's 50MB function bundle limit. The system **automatically falls back** to JSON LR weights (`data/lr_model.json`) if ONNX fails to load — this is the safe path.
+`onnxruntime-web` uses WebAssembly instead of native C++ binaries, so it fully fits inside Vercel's Edge/Node limits.
 
 1. Push to GitHub → Import in Vercel dashboard
 2. Add all environment variables in Project Settings → Environment Variables
-3. Deploy. Vercel will use JSON LR weights; all other features (Hybrid Search, Skill DAGs, Groq synthesis) work fully.
+3. Deploy. All features including Hybrid Search, ONNX WASM inference, Skill DAGs, and Groq synthesis will work seamlessly.
 
 ### Database Setup (Both Options)
 

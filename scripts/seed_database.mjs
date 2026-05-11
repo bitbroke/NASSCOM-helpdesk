@@ -9,8 +9,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CSV_FILE = path.join(__dirname, '..', 'data', 'synthetic_tickets_llm.csv');
-const FALLBACK_CSV = path.join(__dirname, '..', 'data', 'synthetic_tickets.csv');
+const CSV_FILE = path.join(__dirname, '..', 'data', 'english_tickets.csv');
+const FALLBACK_CSV = path.join(__dirname, '..', 'data', 'english_tickets.csv');
 
 env.allowLocalModels = true;
 env.useBrowserCache = false;
@@ -44,15 +44,15 @@ function parseCSV(text) {
   if (current) lines.push(current);
 
   const rows = [];
-  const COLS = 5; // title,description,category,resolution,priority
-  for (let i = COLS; i < lines.length; i += COLS) {
-    if (lines[i] && lines[i+2]) {
+  const COLS = 16; // The CSV has 16 columns
+  for (let i = COLS; i < lines.length; i += COLS) { // Start from COLS to skip header
+    if (lines[i] && lines[i+4]) {
       rows.push({
-        title: lines[i],
-        description: lines[i + 1],
-        category: lines[i + 2],
-        resolution: lines[i + 3],
-        priority: lines[i + 4],
+        title: lines[i],         // Subject
+        description: lines[i + 1],   // Body
+        resolution: lines[i + 2],    // Answer
+        category: lines[i + 4],      // Queue
+        priority: lines[i + 5],      // Priority
       });
     }
   }

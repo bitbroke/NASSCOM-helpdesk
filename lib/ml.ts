@@ -53,6 +53,13 @@ class PipelineSingleton {
       try {
         // Dynamically import to avoid bundling issues on Vercel
         const ort = await import('onnxruntime-web');
+        
+        // Configure WASM paths for Node environment
+        const wasmDir = path.join(process.cwd(), 'node_modules', 'onnxruntime-web', 'dist');
+        const { pathToFileURL } = await import('url');
+        ort.env.wasm.wasmPaths = pathToFileURL(wasmDir).href + '/';
+        ort.env.wasm.numThreads = 1;
+
         const modelPath = path.join(process.cwd(), 'public', 'models', 'classifier.onnx');
         const classMapPath = path.join(process.cwd(), 'public', 'models', 'class_map.json');
 

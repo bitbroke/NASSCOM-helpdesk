@@ -100,19 +100,18 @@ export async function POST(req: NextRequest) {
     sanitizedText = regexRedact(sanitizedText);
     thoughtProcess.push("[Analyser Agent] Sanitized text ready ✓");
 
-    // Embedding
+    // Embedding - Always try to generate embeddings even if NER fails
     let embeddingArray: number[] | null = null;
-    if (useLocalEmbeddings) {
-      try {
-        thoughtProcess.push("[Analyser Agent] Generating 384d embedding (bge-small-en-v1.5)...");
-        const PipelineSingleton = (await import("@/lib/ml")).default;
-        const embedder = await PipelineSingleton.getEmbedding();
-        const out = await (embedder as any)(sanitizedText, { pooling: "mean", normalize: true });
-        embeddingArray = Array.from(out.data) as number[];
-        thoughtProcess.push("[Analyser Agent] 384-dimensional vector generated ✓");
-      } catch {
-        thoughtProcess.push("[Analyser Agent] Embedding failed — text retrieval fallback.");
-      }
+    try {
+      thoughtProcess.push("[Analyser Agent] Generating 384d embedding (bge-small-en-v1.5)...");
+      const PipelineSingleton = (await import("@/lib/ml")).default;
+      const embedder = await PipelineSingleton.getEmbedding();
+      const out = await (embedder as any)(sanitizedText, { pooling: "mean", normalize: true });
+      embeddingArray = Array.from(out.data) as number[];
+      thoughtProcess.push("[Analyser Agent] 384-dimensional vector generated ✓");
+    } catch (e) {
+      thoughtProcess.push("[Analyser Agent] Embedding failed — text retrieval fallback.");
+      console.error("Embedding error:", e);
     }
 
     // ════════════════════════════════════════════════════════════

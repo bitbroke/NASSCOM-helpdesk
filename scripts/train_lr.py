@@ -7,18 +7,19 @@ from sklearn.linear_model import LogisticRegression
 
 def train():
     print("Loading dataset...")
-    file_path = '../data/synthetic_tickets_llm.csv'
-    if not os.path.exists(file_path):
-        file_path = '../data/synthetic_tickets.csv'
+    file_path = '../data/english_tickets.csv'
     df = pd.read_csv(file_path)
 
-    df['text'] = df['title'] + " " + df['description']
-    
+    # Handle NaN values to avoid float type error in sentence-transformers
+    df['Subject'] = df['Subject'].fillna('')
+    df['Body'] = df['Body'].fillna('')
+    df['text'] = df['Subject'] + " " + df['Body']
+    df['text'] = df['text'].fillna('')
     # Map categories to integer labels
-    categories = df['category'].unique().tolist()
+    categories = df['Queue'].unique().tolist()
     cat2id = {c: i for i, c in enumerate(categories)}
     id2cat = {i: c for c, i in cat2id.items()}
-    y = df['category'].map(cat2id).values
+    y = df['Queue'].map(cat2id).values
 
     print("Loading embedding model (BAAI/bge-small-en-v1.5)...")
     model = SentenceTransformer("BAAI/bge-small-en-v1.5")
@@ -26,9 +27,9 @@ def train():
     print("Generating embeddings for training data (this may take a minute)...")
     X = model.encode(df['text'].tolist(), normalize_embeddings=True)
 
-    print("Training Advanced Logistic Regression Classifier (C=100.0)...")
-    # C=100.0 reduces regularization, resulting in sharper/higher confidence probabilities
-    clf = LogisticRegression(C=100.0, class_weight='balanced', max_iter=2000, multi_class='multinomial')
+    print("Training Random Forest Classifier...")
+    from sklearn.ensemble import RandomForestClassifier
+    clf = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
     clf.fit(X, y)
 
     score = clf.score(X, y)
@@ -38,8 +39,9 @@ def train():
     # Export 1: JSON Weights (Legacy fallback for Vercel)
     # ═══════════════════════════════════════════════════════════
     print("Exporting Weights and Intercepts to JSON...")
-    weights = clf.coef_.tolist()
-    intercepts = clf.intercept_.tolist()
+    # Mock weights for legacy fallback
+    weights = []
+    intercepts = []
 
     export_data = {
         "classes": categories,
