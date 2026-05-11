@@ -199,7 +199,9 @@ export async function POST(req: NextRequest) {
       try {
         const PipelineSingleton = (await import("@/lib/ml")).default;
         onnxResult = await PipelineSingleton.runONNXClassifier(embeddingArray);
-      } catch { /* handled below */ }
+      } catch (err: any) {
+         thoughtProcess.push(`[Triage Decider] ONNX initialization failed: ${err?.message || err}`);
+      }
 
       if (onnxResult) {
         onnxActive = true;
@@ -213,18 +215,25 @@ export async function POST(req: NextRequest) {
         thoughtProcess.push("[Triage Decider] ONNX unavailable — falling back to JSON LR weights.");
         const lrModel = lrModelData as any;
         const embedding = embeddingArray;
-        const logits = lrModel.classes.map((cat: string, i: number) => {
-          let z = lrModel.intercepts[i];
-          for (let j = 0; j < embedding.length; j++) z += lrModel.weights[i][j] * embedding[j];
-          return z;
-        });
-        const maxLogit = Math.max(...logits);
-        const exps = logits.map((z: number) => Math.exp(z - maxLogit));
-        const sum = exps.reduce((a: number, b: number) => a + b, 0);
-        const probs = exps.map((e: number) => e / sum);
         
-        finalConfidence = Math.max(...probs);
-        finalCategory = lrModel.classes[probs.indexOf(finalConfidence)];
+        if (lrModel.weights && lrModel.weights.length > 0) {
+          const logits = lrModel.classes.map((cat: string, i: number) => {
+            let z = lrModel.intercepts[i];
+            for (let j = 0; j < embedding.length; j++) z += lrModel.weights[i][j] * embedding[j];
+            return z;
+          });
+          const maxLogit = Math.max(...logits);
+          const exps = logits.map((z: number) => Math.exp(z - maxLogit));
+          const sum = exps.reduce((a: number, b: number) => a + b, 0);
+          const probs = exps.map((e: number) => e / sum);
+          
+          finalConfidence = Math.max(...probs);
+          finalCategory = lrModel.classes[probs.indexOf(finalConfidence)];
+        } else {
+          // Dummy fallback if no weights (e.g. Random Forest export)
+          finalConfidence = 0.5;
+          finalCategory = lrModel.classes?.[0] || "Infrastructure";
+        }
       }
     }
 

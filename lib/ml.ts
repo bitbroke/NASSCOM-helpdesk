@@ -60,7 +60,7 @@ class PipelineSingleton {
         ort.env.wasm.wasmPaths = pathToFileURL(wasmDir).href + '/';
         ort.env.wasm.numThreads = 1;
 
-        const modelPath = path.join(process.cwd(), 'public', 'models', 'classifier.onnx');
+        const modelPath = path.join(process.cwd(), 'public', 'models', 'classifier_v2.onnx');
         const classMapPath = path.join(process.cwd(), 'public', 'models', 'class_map.json');
 
         if (!fs.existsSync(modelPath)) {
@@ -82,11 +82,16 @@ class PipelineSingleton {
       } catch (err: any) {
         console.warn('[ONNX] Failed to load ONNX session:', err?.message || err);
         this.onnxSessionPromise = null; // Allow retry on next request
-        return null;
+        return { error: err?.message || String(err) };
       }
     })();
 
-    return this.onnxSessionPromise;
+    const res = await this.onnxSessionPromise;
+    if (res?.error) {
+      this.onnxSessionPromise = null;
+      throw new Error(res.error);
+    }
+    return res;
   }
 
   /**
@@ -112,14 +117,30 @@ class PipelineSingleton {
       const feeds = { float_input: inputTensor };
       const outputMap = await session.run(feeds);
 
-      // The probability output tensor is typically 'probabilities'
-      const probTensor = outputMap['probabilities'] ?? outputMap[Object.keys(outputMap).find(k => k.includes('prob')) ?? ''];
-      if (!probTensor) {
+      // The probability output tensor is typically 'probabilities' or 'output_probability'
+      let probs: number[] = [];
+      const probTensor = outputMap['probabilities'] || outputMap['output_probability'] || outputMap[Object.keys(outputMap).find(k => k.includes('prob')) ?? ''];
+      
+      if (probTensor) {
+        // Linear models might output a single flat tensor
+        if (probTensor.data instanceof Float32Array || probTensor.data instanceof Float64Array) {
+           probs = Array.from(probTensor.data);
+        } else if (Array.isArray(probTensor.data) || probTensor.data[0]) {
+           // Tree models might output a Sequence of Maps or similar
+           // We extract the array of values from the map
+           const map = probTensor.data[0] || probTensor.data;
+           if (typeof map === 'object' && map !== null) {
+              // Extract values matching the classes array order
+              probs = classes.map(c => map[c] ?? 0);
+           }
+        }
+      }
+
+      if (probs.length === 0) {
         console.warn('[ONNX] No probabilities output found in model. Available outputs:', Object.keys(outputMap));
         return null;
       }
 
-      const probs: number[] = Array.from(probTensor.data as Float32Array);
       let maxProb = -1;
       let bestIdx = 0;
       for (let i = 0; i < probs.length; i++) {
@@ -132,7 +153,7 @@ class PipelineSingleton {
       return { category: classes[bestIdx], confidence: maxProb, allProbs };
     } catch (err: any) {
       console.warn('[ONNX] Inference error:', err?.message || err);
-      return null;
+      throw err;
     }
   }
 }

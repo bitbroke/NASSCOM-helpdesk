@@ -23,9 +23,16 @@ def train():
 
     print("Loading embedding model (BAAI/bge-small-en-v1.5)...")
     model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    
-    print("Generating embeddings for training data (this may take a minute)...")
-    X = model.encode(df['text'].tolist(), normalize_embeddings=True)
+    import numpy as np
+    emb_cache = '../data/embeddings_cache.npy'
+    if os.path.exists(emb_cache):
+        print("Loading embeddings from cache...")
+        X = np.load(emb_cache)
+    else:
+        print("Generating embeddings for training data (this may take a minute)...")
+        X = model.encode(df['text'].tolist(), normalize_embeddings=True)
+        np.save(emb_cache, X)
+
 
     print("Training Random Forest Classifier...")
     from sklearn.ensemble import RandomForestClassifier
@@ -65,7 +72,12 @@ def train():
         print("Exporting Model to ONNX...")
         # Define the input shape: 1 sample, 384 dimensions (from bge-small)
         initial_type = [('float_input', FloatTensorType([None, 384]))]
-        onnx_model = convert_sklearn(clf, initial_types=initial_type, target_opset=12)
+        onnx_model = convert_sklearn(
+            clf, 
+            initial_types=initial_type, 
+            target_opset=12,
+            options={id(clf): {'zipmap': False}}
+        )
 
         onnx_output = '../public/models/classifier.onnx'
         os.makedirs(os.path.dirname(onnx_output), exist_ok=True)
