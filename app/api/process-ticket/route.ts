@@ -238,12 +238,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ════════════════════════════════════════════════════════════
-    // AGENT 4 — SYNTHESIS LAYER & CONSENSUS GATE (0.70 Threshold)
+    // AGENT 4 — SYNTHESIS LAYER & CONSENSUS GATE (0.55 Threshold)
     // ════════════════════════════════════════════════════════════
     let finalStatus = 'NEEDS_HUMAN';
     
     // Check if ONNX/Math confidence is high enough AND matches the DB's best guess
-    if (finalConfidence >= 0.70 && finalCategory === winningBidCategory) {
+    if (finalConfidence >= 0.55 && finalCategory === winningBidCategory) {
       finalStatus = 'AUTO_RESOLVED';
       thoughtProcess.push(`🚀 [Synthesis Layer] Category approved. Retrieving Skill DAG for ${finalCategory}...`);
       
@@ -328,10 +328,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (supabase) {
+      const { encrypt } = await import("@/lib/encryption");
+      const encryptedText = encrypt(sanitizedText);
+
       await supabase.from('live_tickets').insert({
         category: finalCategory,
         priority: finalPriority,
-        original_redacted_text: sanitizedText,
+        original_redacted_text: encryptedText,
         confidence_score: finalConfidence,
         status: finalStatus,
         repeat_count: repeatCount,

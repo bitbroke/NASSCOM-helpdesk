@@ -23,9 +23,9 @@ An advanced, privacy-first IT Helpdesk system engineered for enterprise environm
 
 | Agent | Input | Output |
 |---|---|---|
-| **Analyser** | Raw user text | Sanitized text + 384d vector |
+| **Analyser** | Raw user text | Sanitized text + 384d vector (AES-256-GCM Encrypted) |
 | **Manager Council** | Text + vector | Top-5 RRF results, domain bid scores |
-| **Triage Decider** | 384d vector | Category + confidence (ONNX, threshold 0.70) |
+| **Triage Decider** | 384d vector | Category + confidence (ONNX Logistic Regression, threshold 0.55) |
 | **Synthesis Layer** | Winning category | Procedural Skill DAG (cloud or offline) |
 
 ### Fallback Chains (Guaranteed uptime)
@@ -40,11 +40,12 @@ An advanced, privacy-first IT Helpdesk system engineered for enterprise environm
 
 ## Core Capabilities
 
-1. **Zero-Trust PII Redaction** — Local BERT NER (WASM) intercepts and masks names, IPs, emails before any data leaves the server. Regex pattern matching provides a secondary safety net.
+1. **Zero-Trust PII Redaction & Application-Level Encryption** — Local BERT NER (WASM) intercepts and masks names, IPs, emails before any data leaves the server. Then, the sanitized payload is subjected to Application-Level Encryption (AES-256-GCM) with a 32-byte secret before database insertion, guaranteeing absolute privacy.
 2. **Air-Gapped ONNX Classification** — A Scikit-Learn Logistic Regression model is exported to ONNX via `skl2onnx` and loaded natively by `onnxruntime-web` (WASM). No native C++ binary issues at inference time.
-3. **Hybrid Search (BM25 + pgvector)** — The `hybrid_search_tickets` Supabase RPC fuses lexical BM25 rankings with semantic cosine similarity scores using Reciprocal Rank Fusion (k=60), giving the Manager Council richer context than pure vector search.
-4. **Procedural Skill DAGs** — The `agentic_skills` table stores 6 deterministic runbooks (one per category). In cloud mode, Groq synthesises these into natural language. In offline mode, they are returned raw with a `[SKILL ACTIVATED: OFFLINE MODE]` badge.
-5. **Agentic Outage Detection** — If ≥3 similar tickets arrive within 72 hours, the system auto-drafts a Master Incident Runbook and mass-communication template.
+3. **Category Compressor & Hybrid Search (BM25 + pgvector)** — The `hybrid_search_tickets` Supabase RPC fuses lexical BM25 rankings with semantic cosine similarity scores using Reciprocal Rank Fusion (k=60), giving the Manager Council richer context than pure vector search. The dataset is compressed into 6 core IT categories.
+4. **Enterprise Auth** — The Admin portal is secured by Supabase Passwordless Auth (Magic Links) and Row-Level Security (RLS) on the tickets table.
+5. **Procedural Skill DAGs** — The `agentic_skills` table stores 6 deterministic runbooks (one per category). In cloud mode, Groq synthesises these into natural language. In offline mode, they are returned raw with a `[SKILL ACTIVATED: OFFLINE MODE]` badge.
+6. **Agentic Outage Detection** — If ≥3 similar tickets arrive within 72 hours, the system auto-drafts a Master Incident Runbook and mass-communication template.
 
 ---
 
@@ -57,8 +58,9 @@ An advanced, privacy-first IT Helpdesk system engineered for enterprise environm
 | ML (Local NER + Embed) | `@xenova/transformers` (WASM) |
 | ML (Classifier) | `onnxruntime-web` (WASM) + JSON fallback |
 | LLM Synthesis | Groq API (`llama-3.3-70b-versatile`) |
+| Auth & Security | Supabase Magic Link Auth, RLS, Node.js Crypto (AES-256-GCM) |
 | Rate Limiting | Upstash Redis |
-| Training | Python, Scikit-Learn, SentenceTransformers, skl2onnx |
+| Training | Python, Scikit-Learn (LogisticRegression), SentenceTransformers, skl2onnx |
 
 ---
 

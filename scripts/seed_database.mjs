@@ -45,15 +45,34 @@ function parseCSV(text) {
 
   const rows = [];
   const COLS = 16; // The CSV has 16 columns
+  
+  const category_mapping = {
+    'Technical Support': 'Application',
+    'IT Support': 'Infrastructure',
+    'Service Outages and Maintenance': 'Network',
+    'Human Resources': 'Access Management',
+    'Billing and Payments': 'DROP',
+    'Customer Service': 'DROP',
+    'Returns and Exchanges': 'DROP',
+    'Sales and Pre-Sales': 'DROP',
+    'Product Support': 'Application',
+    'General Inquiry': 'DROP'
+  };
+
   for (let i = COLS; i < lines.length; i += COLS) { // Start from COLS to skip header
     if (lines[i] && lines[i+4]) {
-      rows.push({
-        title: lines[i],         // Subject
-        description: lines[i + 1],   // Body
-        resolution: lines[i + 2],    // Answer
-        category: lines[i + 4],      // Queue
-        priority: lines[i + 5],      // Priority
-      });
+      let cat = lines[i+4].trim();
+      let mapped = category_mapping[cat] || 'DROP';
+      
+      if (mapped !== 'DROP') {
+        rows.push({
+          title: lines[i],         // Subject
+          description: lines[i + 1],   // Body
+          resolution: lines[i + 2],    // Answer
+          category: mapped,            // Queue
+          priority: lines[i + 5],      // Priority
+        });
+      }
     }
   }
   return rows;
@@ -81,6 +100,14 @@ async function seed() {
 
   console.log('\n🔤 Loading embedding model (bge-small-en-v1.5)...');
   const embedder = await pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5', { quantized: true });
+
+  console.log('\n🧹 Clearing existing `historical_tickets`...');
+  const { error: delError } = await supabase.from('historical_tickets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (delError) {
+    console.error('❌ Error clearing table:', delError.message);
+  } else {
+    console.log('✅ Table cleared.');
+  }
 
   console.log('\n🌱 Pushing to Supabase `historical_tickets` in batches...');
   const BATCH_SIZE = 50;

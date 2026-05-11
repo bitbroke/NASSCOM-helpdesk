@@ -53,14 +53,14 @@ Fully offline       →  BM25 keyword search + agentic_skills Skill DAG
 
 ## 3. Data Sources & Data Engineering
 
-**Primary Dataset:** 16,338 unique English enterprise IT tickets from the Kaggle Multilingual Customer Support Tickets dataset.
+**Primary Dataset:** 9,054 unique IT-focused tickets mapped from the Kaggle Multilingual Customer Support Tickets dataset.
 
 **Pipeline:**
 1. Filter Kaggle dataset to English tickets.
-2. CSV parsing mapped to queue, answer, priority.
+2. Apply the Category Compressor to drop non-IT tickets (Sales, Billing, etc.) and map to 6 core IT categories.
 3. `SentenceTransformers (bge-small-en-v1.5)` embedding → normalized float arrays
 4. Batch upsert into Supabase `historical_tickets` (includes `embedding vector(384)`)
-5. `train_lr.py` trains `RandomForestClassifier(n_estimators=100, class_weight='balanced')` → exports **both** `lr_model.json` (JSON fallback) and `classifier.onnx` (primary inference path)
+5. `train_lr.py` trains `LogisticRegression(C=100.0, class_weight='balanced')` → exports **both** `lr_model.json` (JSON fallback) and `classifier.onnx` (primary inference path)
 
 ---
 
@@ -149,7 +149,7 @@ sequenceDiagram
     MC->>TD: vector + domain bid scores
     TD->>TD: ONNX inference (classifier.onnx)
     TD->>TD: Consensus check vs bids
-    alt Confidence >= 0.70
+    alt Confidence >= 0.55
         TD->>SL: Winning category
         SL->>DB: SELECT agentic_skills WHERE category=X
         DB-->>SL: Skill DAG (execution_steps)
@@ -160,7 +160,7 @@ sequenceDiagram
             SL->>U: [SKILL ACTIVATED: OFFLINE MODE] + raw DAG
         end
         SL->>DB: INSERT live_tickets (AUTO_RESOLVED)
-    else Confidence < 0.70
+    else Confidence < 0.55
         TD->>DB: INSERT live_tickets (NEEDS_HUMAN)
     end
     DB-->>U: JSON response + thoughtProcess log
@@ -204,9 +204,9 @@ stateDiagram-v2
 |---------|------|
 | `@xenova/transformers` | WASM BERT NER + bge-small embedding in Node.js |
 | `onnxruntime-web` | WebAssembly ONNX runtime for `classifier.onnx` inference, allowing zero-dependency deploy on Vercel |
-| `skl2onnx` (Python) | Exports Scikit-Learn RF model to ONNX format |
+| `skl2onnx` (Python) | Exports Scikit-Learn Logistic Regression model to ONNX format |
 | `pgvector` | PostgreSQL cosine similarity at DB layer |
-| `Scikit-Learn` | Random Forest training |
+| `Scikit-Learn` | Logistic Regression training |
 | `Framer Motion` | Micro-animations and UI state transitions |
 | `Next.js 16` | Full-stack React framework with API routes |
 | `Upstash Redis` | Serverless sliding-window rate limiting |

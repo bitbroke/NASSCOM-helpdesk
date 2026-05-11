@@ -6,6 +6,8 @@ import { LayoutDashboard, AlertCircle, CheckCircle2, Zap } from "lucide-react";
 
 import { AdminActions } from "@/components/AdminActions";
 
+import { decrypt } from "@/lib/encryption";
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
@@ -16,7 +18,12 @@ export default async function AdminDashboard() {
         .from("live_tickets")
         .select("*")
         .order("created_at", { ascending: false });
-      if (data) tickets = data;
+      if (data) {
+        tickets = data.map(t => ({
+          ...t,
+          original_redacted_text: decrypt(t.original_redacted_text)
+        }));
+      }
     }
   } catch (err) {
     console.error("Error fetching tickets array", err);

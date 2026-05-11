@@ -60,7 +60,7 @@ class PipelineSingleton {
         ort.env.wasm.wasmPaths = pathToFileURL(wasmDir).href + '/';
         ort.env.wasm.numThreads = 1;
 
-        const modelPath = path.join(process.cwd(), 'public', 'models', 'classifier_v2.onnx');
+        const modelPath = path.join(process.cwd(), 'public', 'models', 'classifier.onnx');
         const classMapPath = path.join(process.cwd(), 'public', 'models', 'class_map.json');
 
         if (!fs.existsSync(modelPath)) {

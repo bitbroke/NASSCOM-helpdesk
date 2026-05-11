@@ -15,11 +15,33 @@ def train():
     df['Body'] = df['Body'].fillna('')
     df['text'] = df['Subject'] + " " + df['Body']
     df['text'] = df['text'].fillna('')
+    # The Category Compressor
+    category_mapping = {
+        'Technical Support': 'Application',
+        'IT Support': 'Infrastructure',
+        'Service Outages and Maintenance': 'Network',
+        'Human Resources': 'Access Management',
+        # Drop non-IT queues to keep the model strictly focused on technical triage
+        'Billing and Payments': 'DROP',
+        'Customer Service': 'DROP',
+        'Returns and Exchanges': 'DROP',
+        'Sales and Pre-Sales': 'DROP',
+        'Product Support': 'Application',
+        'General Inquiry': 'DROP'
+    }
+
+    # Apply the mapping
+    df['Mapped_Category'] = df['Queue'].map(category_mapping)
+
+    # Drop the non-IT rows
+    df = df[df['Mapped_Category'] != 'DROP']
+    df = df.dropna(subset=['Mapped_Category'])
+
     # Map categories to integer labels
-    categories = df['Queue'].unique().tolist()
+    categories = df['Mapped_Category'].unique().tolist()
     cat2id = {c: i for i, c in enumerate(categories)}
     id2cat = {i: c for c, i in cat2id.items()}
-    y = df['Queue'].map(cat2id).values
+    y = df['Mapped_Category'].map(cat2id).values
 
     print("Loading embedding model (BAAI/bge-small-en-v1.5)...")
     model = SentenceTransformer("BAAI/bge-small-en-v1.5")
@@ -34,9 +56,10 @@ def train():
         np.save(emb_cache, X)
 
 
-    print("Training Random Forest Classifier...")
-    from sklearn.ensemble import RandomForestClassifier
-    clf = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
+    print("Training Logistic Regression Classifier...")
+    from sklearn.linear_model import LogisticRegression
+    # Use C=100.0 to reduce regularization and sharpen probabilities
+    clf = LogisticRegression(C=100.0, class_weight='balanced', max_iter=2000, multi_class='multinomial')
     clf.fit(X, y)
 
     score = clf.score(X, y)
@@ -46,9 +69,9 @@ def train():
     # Export 1: JSON Weights (Legacy fallback for Vercel)
     # ═══════════════════════════════════════════════════════════
     print("Exporting Weights and Intercepts to JSON...")
-    # Mock weights for legacy fallback
-    weights = []
-    intercepts = []
+    
+    weights = clf.coef_.tolist()
+    intercepts = clf.intercept_.tolist()
 
     export_data = {
         "classes": categories,
