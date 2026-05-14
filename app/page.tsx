@@ -129,7 +129,7 @@ export default function SubmissionPortal() {
     document.documentElement.style.setProperty('--honey-light', `rgba(${r}, ${g}, ${b}, 0.6)`);
   }, [settings.accentColor]);
 
-  const animationProps = settings.animationsEnabled ? {} : { animate: false, initial: false, exit: false };
+  // Removed animationProps helper to avoid type spread issues
 
   function clearForm() {
     setIssueText(""); setLogText(""); setTicketStatus(null);
@@ -248,7 +248,11 @@ export default function SubmissionPortal() {
 
             {/* ═══ LEFT: CHARACTER + INPUT (compact) ═══ */}
             {settings.mascotVisible && (
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} {...animationProps}
+              <motion.div 
+                initial={settings.animationsEnabled ? { opacity: 0, x: -20 } : undefined} 
+                animate={settings.animationsEnabled ? { opacity: 1, x: 0 } : undefined}
+                exit={settings.animationsEnabled ? { opacity: 0, x: -20 } : undefined}
+                transition={{ duration: 0.5 }}
                 className="w-[240px] shrink-0 flex flex-col gap-3">
 
               {/* Character */}
@@ -259,7 +263,8 @@ export default function SubmissionPortal() {
                     mood === "thinking" ? "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.3), transparent 70%)" :
                     "radial-gradient(circle at 50% 60%, rgba(212,160,23,0.2), transparent 70%)"
                 }} />
-                <motion.div animate={{ y: loading ? [0, -6, 0] : [0, -3, 0], rotate: mousePos.x * 0.3 }}
+                <motion.div 
+                  animate={settings.animationsEnabled ? { y: loading ? [0, -6, 0] : [0, -3, 0], rotate: mousePos.x * 0.3 } : undefined}
                   transition={{ y: { duration: loading ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }, rotate: { duration: 0.3 } }}
                   className="relative z-10 w-32 h-32">
                   <img src={MascotForMood[mood] || "/sugoi-idle.png"} alt="Sugoi" className="w-full h-full object-contain drop-shadow-lg transition-all duration-500" />
@@ -272,7 +277,9 @@ export default function SubmissionPortal() {
               </div>
 
               {/* Dialogue */}
-              <motion.div key={mood} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              <motion.div key={mood} 
+                initial={settings.animationsEnabled ? { opacity: 0, y: 6 } : undefined} 
+                animate={settings.animationsEnabled ? { opacity: 1, y: 0 } : undefined}
                 className="glass-panel border-taupe/40 rounded-2xl p-3 relative bg-white/40">
                 <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 glass-panel border-taupe/40 bg-white/40" />
                 <p className="text-[11px] leading-relaxed font-bold text-center italic" style={{ color: "var(--soft-black)" }}>
@@ -288,7 +295,10 @@ export default function SubmissionPortal() {
             )}
 
             {/* ═══ CENTER: INPUT + OUTPUT ═══ */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+            <motion.div 
+              initial={settings.animationsEnabled ? { opacity: 0, y: 20 } : undefined} 
+              animate={settings.animationsEnabled ? { opacity: 1, y: 0 } : undefined}
+              transition={{ duration: 0.5, delay: 0.1 }}
               className="flex-1 flex flex-col min-w-0 gap-6">
 
               {/* MAIN DESCRIBE ISSUE INPUT (Prominent Center) */}
@@ -368,11 +378,19 @@ export default function SubmissionPortal() {
                 <div className="flex-1 relative overflow-hidden">
                   <AnimatePresence mode="wait">
                     {activeTab === "stream" ? (
-                      <motion.div key="stream" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar">
+                      <motion.div key="stream" 
+                        initial={settings.animationsEnabled ? { opacity: 0 } : undefined} 
+                        animate={settings.animationsEnabled ? { opacity: 1 } : undefined} 
+                        exit={settings.animationsEnabled ? { opacity: 0 } : undefined} 
+                        className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar">
                         <DualLogTerminal thoughtProcess={thoughtProcess} loading={loading} agenticTrace={agenticTrace} />
                       </motion.div>
                     ) : (
-                      <motion.div key="resolution" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute inset-0 p-5 overflow-y-auto custom-scrollbar">
+                      <motion.div key="resolution" 
+                        initial={settings.animationsEnabled ? { opacity: 0, y: 8 } : undefined} 
+                        animate={settings.animationsEnabled ? { opacity: 1, y: 0 } : undefined} 
+                        exit={settings.animationsEnabled ? { opacity: 0 } : undefined} 
+                        className="absolute inset-0 p-5 overflow-y-auto custom-scrollbar">
                         {finalResolution ? (
                           <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-2 mb-2 pb-3" style={{ borderBottom: "1px solid rgba(212,160,23,0.1)" }}>
@@ -403,7 +421,10 @@ export default function SubmissionPortal() {
             </motion.div>
 
             {/* ═══ RIGHT: METRICS (compact) ═══ */}
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
+            <motion.div 
+              initial={settings.animationsEnabled ? { opacity: 0, x: 20 } : undefined} 
+              animate={settings.animationsEnabled ? { opacity: 1, x: 0 } : undefined} 
+              transition={{ duration: 0.5, delay: 0.2 }}
               className="w-[180px] shrink-0 flex flex-col gap-3">
 
               {/* Confidence Ring */}
@@ -436,7 +457,7 @@ export default function SubmissionPortal() {
                   <span className="text-[9px] font-black text-emerald-600">LVL 99</span>
                 </div>
                 <div className="w-full h-2 bg-taupe/10 rounded-full overflow-hidden">
-                  <motion.div animate={{ width: "100%" }} className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
+                  <motion.div animate={settings.animationsEnabled ? { width: "100%" } : undefined} className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
                 </div>
                 
                 <div className="flex items-center justify-between mt-1">
@@ -444,7 +465,7 @@ export default function SubmissionPortal() {
                   <span className="text-[9px] font-black text-red-500">BOSS BATTLE</span>
                 </div>
                 <div className="w-full h-2 bg-taupe/10 rounded-full overflow-hidden">
-                  <motion.div animate={{ width: `${game.enemyHealth}%` }} className="h-full bg-gradient-to-r from-red-500 to-red-700" />
+                  <motion.div animate={settings.animationsEnabled ? { width: `${game.enemyHealth}%` } : undefined} className="h-full bg-gradient-to-r from-red-500 to-red-700" />
                 </div>
               </div>
 
@@ -453,7 +474,7 @@ export default function SubmissionPortal() {
                 <span className="text-[8px] font-black text-taupe uppercase tracking-[0.2em] mb-2">Chaos Probability</span>
                 <div className="relative w-full h-8 bg-taupe/5 rounded-lg border border-taupe/20 overflow-hidden flex items-center justify-center">
                   <motion.div 
-                    animate={{ width: `${game.chaosLevel}%` }} 
+                    animate={settings.animationsEnabled ? { width: `${game.chaosLevel}%` } : undefined}
                     className="absolute inset-0 bg-gradient-to-r from-brand-orange/10 to-brand-orange/40" 
                   />
                   <span className="relative z-10 text-xs font-black text-taupe">{game.chaosLevel}%</span>
