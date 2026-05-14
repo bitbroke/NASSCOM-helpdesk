@@ -7,6 +7,8 @@ import fs from 'fs';
 env.allowLocalModels = true;
 env.useBrowserCache = false; 
 env.cacheDir = '/tmp';
+// Force WASM/Web backend for ONNX to avoid native .node dependency issues on Vercel
+(env.backends as any).onnx.wasm.numThreads = 1;
 
 class PipelineSingleton {
   static nerTask = 'token-classification';
