@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["onnxruntime-node"],
+  serverExternalPackages: ["onnxruntime-node", "@xenova/transformers"],
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.node$/,
+      use: "raw-loader",
+    });
+    return config;
+  }
 };
 
 export default nextConfig;
