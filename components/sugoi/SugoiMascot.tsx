@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, TargetAndTransition } from "framer-motion";
 import { useSugoiStore, Mood } from "@/store/useSugoiStore";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
@@ -16,7 +16,7 @@ const MascotImages: Record<Mood, string> = {
   happy: "/sugoi-win.png",
 };
 
-const floatVariants: Record<Mood, object> = {
+const floatVariants: Record<Mood, TargetAndTransition> = {
   idle: { y: [-8, 8, -8], transition: { duration: 5, repeat: Infinity, ease: "easeInOut" } },
   thinking: { y: [-4, 4, -4], rotate: [-0.5, 0.5, -0.5], transition: { duration: 2.5, repeat: Infinity, ease: "easeInOut" } },
   judging: { x: [-3, 3, -3, 3, 0], transition: { duration: 0.5 } },
