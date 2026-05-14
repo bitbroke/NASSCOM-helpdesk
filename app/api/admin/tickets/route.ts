@@ -12,6 +12,10 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized access. Session required." }, { status: 401 });
   }
 
+  if (!supabase) {
+    return NextResponse.json({ error: "Database configuration missing." }, { status: 500 });
+  }
+
   try {
     const { data, error } = await supabase
       .from('live_tickets')
