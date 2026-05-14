@@ -15,6 +15,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const supabase = createClient()
 
   const handleOAuth = async (provider: 'google' | 'github') => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Check your environment variables.")
+      return
+    }
     setLoading(provider)
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
