@@ -236,7 +236,7 @@ export default function SubmissionPortal() {
       <main className="flex-1 min-h-screen flex flex-col overflow-hidden">
         <header className="h-14 shrink-0 flex items-center justify-between px-6 z-30" style={{ borderBottom: "1px solid rgba(212,160,23,0.06)" }}>
           <div className="flex items-center gap-3">
-            <h1 className="text-base font-bold font-display" style={{ color: "var(--charcoal)" }}>Triage Console</h1>
+            <h1 className="text-base font-bold font-display" style={{ color: "var(--charcoal)" }}>Sugoi Support</h1>
             <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(212,160,23,0.08)", color: "var(--honey)" }}>v3.2</span>
           </div>
           <button onClick={() => setIsAirGapped(!isAirGapped)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer glass-inner hover:bg-white/60"
