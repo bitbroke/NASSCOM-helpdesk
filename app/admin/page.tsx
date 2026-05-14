@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   let tickets = [];
   try {
-    if (supabase) {
-      const { data } = await supabase
+    const client = supabase;
+    if (client) {
+      const { data } = await client
         .from("live_tickets")
         .select("*")
         .order("created_at", { ascending: false });
