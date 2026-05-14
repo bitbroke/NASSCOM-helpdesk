@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  turbopack: {}, // Silence webpack vs turbopack error
   webpack: (config) => {
     config.module.rules.push({
       test: /\.node$/,
