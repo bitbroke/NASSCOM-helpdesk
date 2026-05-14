@@ -191,9 +191,10 @@ export async function POST(req: NextRequest) {
 
     if (finalResolution.includes("Triage Incomplete")) finalStatus = 'NEEDS_HUMAN';
 
-    if (supabase) {
+    const client = supabase;
+    if (client) {
       const { encrypt } = await import("@/lib/encryption");
-      await supabase.from('live_tickets').insert({ category: finalCategory, priority: "Medium", original_redacted_text: encrypt(sanitizedText), confidence_score: finalConfidence, status: finalStatus });
+      await client.from('live_tickets').insert({ category: finalCategory, priority: "Medium", original_redacted_text: encrypt(sanitizedText), confidence_score: finalConfidence, status: finalStatus });
     }
 
     return NextResponse.json({

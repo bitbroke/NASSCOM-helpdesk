@@ -12,12 +12,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized access. Session required." }, { status: 401 });
   }
 
-  if (!supabase) {
+  const client = supabase;
+  if (!client) {
     return NextResponse.json({ error: "Database configuration missing." }, { status: 500 });
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('live_tickets')
       .select('*')
       .order('created_at', { ascending: false });
