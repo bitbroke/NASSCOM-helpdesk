@@ -99,14 +99,10 @@ export default function SubmissionPortal() {
   useEffect(() => {
     setWelcomeMsg(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
     
-    // Check if user has already seen the modal this session or is already logged in
-    const hasSeenModal = sessionStorage.getItem('hasSeenAuthModal');
-    if (!hasSeenModal) {
-      setTimeout(() => {
-        setIsAuthModalOpen(true);
-        sessionStorage.setItem('hasSeenAuthModal', 'true');
-      }, 1500); // Slight delay for dramatic effect
-    }
+    // Trigger modal on every refresh for demo purposes
+    setTimeout(() => {
+      setIsAuthModalOpen(true);
+    }, 1500); 
   }, []);
 
   useEffect(() => {
