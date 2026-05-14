@@ -202,7 +202,10 @@ export async function POST(req: NextRequest) {
       category: finalCategory,
       resolution: finalResolution,
       confidenceScore: finalConfidence,
-      thoughtProcess: thoughtProcess
+      thoughtProcess: thoughtProcess,
+      supervisor_action: supervisorAction,
+      tool_data: toolData,
+      keywords: [] // For UI compatibility
     });
 
   } catch (err: any) {

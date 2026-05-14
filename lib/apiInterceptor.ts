@@ -2,11 +2,14 @@ import { executeShadowRouter } from "./shadowRouter";
 import { useSugoiStore } from "@/store/useSugoiStore";
 
 interface TriageResult {
-  status: "SUCCESS" | "FAILED";
+  status: "SUCCESS" | "FAILED" | "ESCALATED";
   resolution: string;
   category: string;
   confidenceScore: number;
   thoughtProcess: string[];
+  supervisor_action?: string;
+  tool_data?: string;
+  keywords?: string[];
 }
 
 export async function processTicketWithFallback(prompt: string, logContent?: string, useLLM: boolean = true): Promise<TriageResult> {
