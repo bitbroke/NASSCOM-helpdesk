@@ -11,6 +11,7 @@ import { processTicketWithFallback } from "@/lib/apiInterceptor";
 import { ResolutionCard } from "@/components/sugoi/ResolutionCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AuthModal } from "@/components/sugoi/AuthModal";
 
 const MascotForMood: Record<string, string> = {
   idle: "/sugoi-idle.png",
@@ -79,6 +80,7 @@ export default function SubmissionPortal() {
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [currentTyping, setCurrentTyping] = useState<string | null>(null);
   const [agenticTrace, setAgenticTrace] = useState<any>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const persona = useSugoiStore((s) => s.persona);
   const game = useSugoiStore((s) => s.game);
@@ -96,6 +98,15 @@ export default function SubmissionPortal() {
 
   useEffect(() => {
     setWelcomeMsg(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
+    
+    // Check if user has already seen the modal this session or is already logged in
+    const hasSeenModal = sessionStorage.getItem('hasSeenAuthModal');
+    if (!hasSeenModal) {
+      setTimeout(() => {
+        setIsAuthModalOpen(true);
+        sessionStorage.setItem('hasSeenAuthModal', 'true');
+      }, 1500); // Slight delay for dramatic effect
+    }
   }, []);
 
   useEffect(() => {
@@ -520,6 +531,7 @@ export default function SubmissionPortal() {
           </div>
         </div>
       </main>
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }
