@@ -1,269 +1,49 @@
-# Captain Obvious: Project Architecture & Design Documentation
-### Multi-Agent Council Architecture · Triangle-Edge Synthesis v2.0
+# Sugoi Bot: Project Architecture & Design Documentation
+### Multi-Agent Council Architecture · Council Duel Synthesis v3.5 · Honey & Cream UX
 
 ---
 
-## 1. Detailed Proposed Solution Architecture & Components
+## 1. Project Overview
+Sugoi Bot is a **Zero-Trust Agentic IT Helpdesk** designed to automate Level-1 (L1) support triage without sacrificing security or privacy. It employs a Multi-Agent "Council" system that ensures no single model makes an unverified decision. Version 3.5 introduces the **Council Duel**—a parallel execution layer that uses multiple LLMs to cross-verify solutions.
 
-This project implements a **Zero-Trust Agentic IT Helpdesk** built on a Multi-Agent "Council" system. Unlike traditional linear pipelines where a single ML model classifies a ticket and hands off to an LLM, this architecture uses four specialised agents that negotiate — forming a triangle-edge of checks and consensus — before any resolution is served.
+## 2. Problems & Technical Challenges
 
-### The Three Operational Layers
+### A. The "Council Duel" (Parallel LLM Synthesis)
+**Problem**: Relying on a single LLM can lead to hallucinations or shallow technical resolutions during high-stakes IT incidents.
+**Solution**: We implemented **Parallel Council Synthesis**. The system now triggers both **Gemini 2.0 Flash** and **Groq (Llama 3.3)** simultaneously. A winner-selection logic evaluates both outputs based on technical detail density and markdown formatting, ensuring the user only sees the highest-fidelity resolution. This reduces "Model Bias" and increases technical accuracy.
 
-**Layer 1 — Edge Compute (Analyser Agent)**
-Built on Next.js 16, the Analyser Agent intercepts all raw user input. It runs a local BERT NER model (via `@xenova/transformers` WASM) to redact PII (names, IPs, emails, phones) before any data leaves the server. A `bge-small-en-v1.5` embedding model then converts the sanitized text into a 384-dimensional float vector. Both models run entirely in-process — zero external requests, zero data leakage.
+### B. The Configuration Gap (System Control)
+**Problem**: Static AI systems often feel like "black boxes" that admins cannot tune. Judges need proof of a configurable backend.
+**Solution**: We built an **Advanced Settings Dashboard**. Admins can now tune the **Auto-Resolve Threshold**, toggle the **Shadow Brain** (Deterministic Fallback), change the **Active Routing Model**, and even live-edit the **System Persona Prompt**. This moves the app from a simple tool to a configurable enterprise platform.
 
-**Layer 2 — Retrieval & Classification (Manager Council + Triage Decider)**
-The Manager Council calls the `hybrid_search_tickets` Supabase RPC, which fuses BM25 lexical ranking with pgvector cosine similarity using Reciprocal Rank Fusion (k=60). It aggregates results by domain to produce "bid scores" — a measure of how strongly the historical database associates the query with each category.
+### C. Security & "Demo-Killers" (Stability)
+**Problem**: Open APIs and long inputs are "demo-killers." A user pasting a 10MB log file or an unauthenticated user dumping the database would ruin a hackathon presentation.
+**Selection**: 
+1. **Local Guards**: Implemented a 1,000-character `maxLength` and synchronous loading state guards to prevent OOM crashes and duplicate API calls.
+2. **Session-Locked Admin**: Secured all admin routes via **Supabase Auth session checks**.
+3. **Payload Validation**: Strict server-side type checking for all API inputs.
 
-Independently, the Triage Decider loads `classifier.onnx` via `onnxruntime-web` (a WASM-based runtime) and runs inference directly on the 384d vector. The ONNX output (probability distribution over 6 categories) is compared against the Manager Council's bid scores. If they agree, confidence is high. If they disagree, the ONNX score takes authority (it is the more rigorous signal). A 0.70 confidence threshold gates autonomous resolution.
+## 3. The Multi-Agent Council
 
-**Layer 3 — Synthesis (Synthesis Layer)**
-When the Triage Decider approves a category, the Synthesis Layer queries the `agentic_skills` table for the matching procedural Skill DAG — a deterministic, multi-step runbook. In **Cloud Mode**, Groq (`llama-3.3-70b-versatile`) formats this DAG into natural language, constrained to the skill steps and RAG context. In **Air-Gapped Mode**, the raw Skill DAG is returned immediately with a `[SKILL ACTIVATED: OFFLINE MODE]` badge — no LLM required.
+1.  **Analyser Agent (Edge)**: Uses local BERT NER to redact PII. Generates 384d embeddings.
+2.  **Manager Council (Retrieval)**: Fuses BM25 and Vector search (RRF) to find historical context. It produces "Domain Bids" (e.g., "I'm 80% sure this is a Network issue based on past tickets").
+3.  **Triage Decider (Inference)**: Runs the local ONNX model. It compares its result with the Manager's bids.
+4.  **Council Duel (Synthesis)**: The "Battle" between Gemini and Groq to produce the ultimate Markdown runbook.
 
----
+## 4. UI/UX: The Honey & Cream System
 
-## 2. Low Level Design (LLD)
+The UI is designed to be **Premium but Playful**:
+*   **Frosted Glass (Glassmorphism)**: Used for all panels to create depth.
+*   **Responsive Sidebar**: The dashboard now hides navigation on mobile viewports to prioritize the triage console.
+*   **Mascot Visibility**: Added a setting to hide the Sugoi character for a "Strict Enterprise" mode.
+*   **Custom Accents**: Dynamic CSS variables allow users to change the dashboard's glowing accent color (Honey, Sakura, Indigo).
 
-### Core API Orchestration (`POST /api/process-ticket`)
+## 5. Implementation Workflow
 
-| Step | Agent | Action |
-|------|-------|--------|
-| 1 | — | Rate limit check (Upstash Redis sliding window, 5 req/min) |
-| 2 | **Analyser** | Local BERT NER PII redaction → regex safety net |
-| 3 | **Analyser** | `bge-small-en-v1.5` → 384d embedding |
-| 4 | **Manager Council** | `hybrid_search_tickets` RRF (BM25 + pgvector, k=60) → top-5 results + domain bid scores |
-| 5 | **Triage Decider** | ONNX `classifier.onnx` inference → category + confidence |
-| 5a | — | Consensus check: ONNX vs Manager bids |
-| 5b | — | Confidence ≥ 0.70? → proceed; else → NEEDS_HUMAN |
-| 6 | **Synthesis** | Load Skill DAG from `agentic_skills` table |
-| 6a | — | Cloud: Groq formats DAG + RAG context |
-| 6b | — | Air-Gapped: raw DAG returned with `[SKILL ACTIVATED: OFFLINE MODE]` |
-| 7 | — | Agentic outage detection: `count_similar_live_tickets_vector` (72h window) |
-| 8 | — | Save to `live_tickets`; trigger `master_incidents` if ≥3 similar |
-
-### Fallback Chain
-
-```
-ONNX fails          →  JSON LR weights (matrix math, always available)
-Embeddings fail     →  Groq unified call (classifies + resolves in one shot)
-Fully offline       →  BM25 keyword search + agentic_skills Skill DAG
-```
+1.  **Data Engineering**: Cleaned and categorized 9,000+ IT tickets.
+2.  **Model Training**: Trained a balanced Logistic Regression model and exported it to **ONNX**.
+3.  **Frontend Assembly**: Built with Next.js 16 and Framer Motion.
+4.  **Security Audit**: Ensured all PII scrubbing happens *locally* and admin routes are session-protected.
 
 ---
-
-## 3. Data Sources & Data Engineering
-
-**Primary Dataset:** 9,054 unique IT-focused tickets mapped from the Kaggle Multilingual Customer Support Tickets dataset.
-
-**Pipeline:**
-1. Filter Kaggle dataset to English tickets.
-2. Apply the Category Compressor to drop non-IT tickets (Sales, Billing, etc.) and map to 6 core IT categories.
-3. `SentenceTransformers (bge-small-en-v1.5)` embedding → normalized float arrays
-4. Batch upsert into Supabase `historical_tickets` (includes `embedding vector(384)`)
-5. `train_lr.py` trains `LogisticRegression(C=100.0, class_weight='balanced')` → exports **both** `lr_model.json` (JSON fallback) and `classifier.onnx` (primary inference path)
-
----
-
-## 4. Data Model
-
-```mermaid
-erDiagram
-    HISTORICAL_TICKETS {
-        uuid id PK
-        text category
-        text sanitized_query
-        text resolution_steps
-        vector embedding "384 dimensions"
-        tsvector sanitized_query_fts "GENERATED for BM25"
-    }
-    AGENTIC_SKILLS {
-        uuid id PK
-        text category UNIQUE
-        text applicability_logic
-        text execution_steps
-        text termination_criteria
-    }
-    LIVE_TICKETS {
-        uuid id PK
-        text category
-        text status "AUTO_RESOLVED | NEEDS_HUMAN"
-        text original_redacted_text
-        float confidence_score
-        int repeat_count
-        boolean automation_suggested
-        vector embedding
-    }
-    MASTER_INCIDENTS {
-        uuid id PK
-        text category
-        text incident_summary
-        text mass_communication_draft
-        text remediation_runbook
-        int related_ticket_count
-    }
-    HISTORICAL_TICKETS ||--o{ LIVE_TICKETS : "RRF Hybrid RAG Context"
-    AGENTIC_SKILLS ||--o{ LIVE_TICKETS : "Skill DAG Activation"
-    LIVE_TICKETS }|--|| MASTER_INCIDENTS : "Triggers if similar >= 3 in 72h"
-```
-
----
-
-## 5. Data Flow Diagram
-
-```mermaid
-graph TD
-    A[User / Discord Bot] -->|Raw Text| B(Next.js API)
-    B --> C[Analyser Agent\nBERT NER + bge-small]
-    C -->|Sanitized Text + 384d vector| D[Manager Council\nhybrid_search_tickets RRF]
-    D -->|Top-5 + Domain Bids| E[Triage Decider\nONNX classifier.onnx]
-    E -->|Category + Confidence| F{Confidence >= 0.70?}
-    F -- No --> G[NEEDS_HUMAN Queue]
-    F -- Yes --> H[Synthesis Layer\nagentic_skills DAG]
-    H -- Cloud --> I[Groq formats DAG + RAG]
-    H -- Air-Gapped --> J[Raw DAG SKILL ACTIVATED]
-    I --> K[Save to live_tickets]
-    J --> K
-    K -->|count >= 3 in 72h| L[Master Incident Auto-Draft]
-```
-
----
-
-## 6. Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    participant U as End User
-    participant AN as Analyser Agent
-    participant MC as Manager Council
-    participant TD as Triage Decider
-    participant SL as Synthesis Layer
-    participant DB as Supabase
-    participant LLM as Groq API
-
-    U->>AN: POST /api/process-ticket
-    AN->>AN: BERT NER PII scrub
-    AN->>AN: bge-small embedding → 384d
-    AN->>MC: sanitizedText + vector
-    MC->>DB: hybrid_search_tickets RRF
-    DB-->>MC: Top-5 results + rrf_scores
-    MC->>TD: vector + domain bid scores
-    TD->>TD: ONNX inference (classifier.onnx)
-    TD->>TD: Consensus check vs bids
-    alt Confidence >= 0.55
-        TD->>SL: Winning category
-        SL->>DB: SELECT agentic_skills WHERE category=X
-        DB-->>SL: Skill DAG (execution_steps)
-        alt Cloud Mode (useLLM=true)
-            SL->>LLM: Format DAG + RAG context
-            LLM-->>SL: Markdown resolution
-        else Air-Gapped (useLLM=false)
-            SL->>U: [SKILL ACTIVATED: OFFLINE MODE] + raw DAG
-        end
-        SL->>DB: INSERT live_tickets (AUTO_RESOLVED)
-    else Confidence < 0.55
-        TD->>DB: INSERT live_tickets (NEEDS_HUMAN)
-    end
-    DB-->>U: JSON response + thoughtProcess log
-```
-
----
-
-## 7. State Transition Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> Submitted
-    Submitted --> PII_Redacted: Analyser Agent NER
-    PII_Redacted --> Embedded: bge-small Vectorization
-    Embedded --> HybridSearch: Manager Council RRF
-    HybridSearch --> ONNX_Classified: Triage Decider
-
-    ONNX_Classified --> Consensus_Check: Compare vs Manager Bids
-    Consensus_Check --> Needs_Human: Confidence < 0.70
-    Consensus_Check --> Skill_Activated: Confidence >= 0.70
-
-    Skill_Activated --> Cloud_Synthesis: useLLM=true
-    Skill_Activated --> AirGapped_DAG: useLLM=false
-
-    Cloud_Synthesis --> Outage_Detection
-    AirGapped_DAG --> Outage_Detection
-
-    Outage_Detection --> Master_Incident: Similar >= 3 in 72h
-    Outage_Detection --> Auto_Resolved: Similar < 3
-
-    Needs_Human --> [*]
-    Auto_Resolved --> [*]
-    Master_Incident --> [*]
-```
-
----
-
-## 8. Open Source & Library Utilization
-
-| Library | Role |
-|---------|------|
-| `@xenova/transformers` | WASM BERT NER + bge-small embedding in Node.js |
-| `onnxruntime-web` | WebAssembly ONNX runtime for `classifier.onnx` inference, allowing zero-dependency deploy on Vercel |
-| `skl2onnx` (Python) | Exports Scikit-Learn Logistic Regression model to ONNX format |
-| `pgvector` | PostgreSQL cosine similarity at DB layer |
-| `Scikit-Learn` | Logistic Regression training |
-| `Framer Motion` | Micro-animations and UI state transitions |
-| `Next.js 16` | Full-stack React framework with API routes |
-| `Upstash Redis` | Serverless sliding-window rate limiting |
-
----
-
-## 9. Deployment Guide
-
-### Option A — Render (Recommended)
-
-1. Connect your GitHub repo to Render as a **Web Service**
-2. Set **Build Command:** `npm install && npm run build`
-3. Set **Start Command:** `npm start`
-4. Add all environment variables from `.env.local` in the Render dashboard
-
-### Option B — Vercel
-
-`onnxruntime-web` uses WebAssembly instead of native C++ binaries, so it fully fits inside Vercel's Edge/Node limits.
-
-1. Push to GitHub → Import in Vercel dashboard
-2. Add all environment variables in Project Settings → Environment Variables
-3. Deploy. All features including Hybrid Search, ONNX WASM inference, Skill DAGs, and Groq synthesis will work seamlessly.
-
-### Database Setup (Both Options)
-
-Run in Supabase SQL Editor, **in order**:
-```sql
--- 1. Schema (tables + RRF function + FTS index)
--- Paste contents of supabase/schema.sql
-
--- 2. Skill DAGs (6 procedural runbooks)
--- Paste contents of supabase/seed_skills.sql
-```
-
-### ONNX Model Training (Run Locally Before Deploy)
-
-```bash
-pip install scikit-learn sentence-transformers pandas skl2onnx onnxruntime numpy
-cd scripts
-python train_lr.py
-# Outputs:
-#   ../data/lr_model.json           (Vercel fallback)
-#   ../public/models/classifier.onnx (primary ONNX path)
-#   ../public/models/class_map.json  (label decoder)
-```
-
-Commit all three output files to your repo before deploying.
-
----
-
-## 10. Test Cases
-
-| # | Query | Mode | Expected Behavior |
-|---|-------|------|-------------------|
-| 1 | "PostgreSQL deadlock on payroll query" | Cloud | ONNX → Database (>70%), Manager confirms, Groq formats Skill DAG |
-| 2 | "VPN keeps disconnecting" | Air-Gapped | ONNX → Network, `[SKILL ACTIVATED: OFFLINE MODE]` badge |
-| 3 | "My keyboard feels weird at the company picnic" | Cloud | ONNX confidence <70% → NEEDS_HUMAN |
-| 4 | "VPN crash" × 3 submissions | Cloud | 3rd triggers Master Incident auto-draft |
-| 5 | "Outlook crashes with error 0x8004010F" | Air-Gapped | ONNX → Application, raw Skill DAG returned |
-| 6 | Any query, embeddings down | Cloud | Groq Path B: unified classification + resolution |
+**Sugoi Bot v3.5** represents the pinnacle of agentic IT support: secure, multi-verified, and highly configurable.

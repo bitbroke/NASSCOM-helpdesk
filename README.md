@@ -1,130 +1,58 @@
-# Captain Obvious: Enterprise Zero-Trust IT Helpdesk
-### Multi-Agent Council Architecture · Triangle-Edge Synthesis
+# Sugoi Bot: Honey & Cream Zero-Trust IT Helpdesk
+### Multi-Agent Council Architecture · Council Duel Synthesis v3.5 · Premium GSAP UX
 
-An advanced, privacy-first IT Helpdesk system engineered for enterprise environments. The system automates Level-1 (L1) support triage through a **Multi-Agent "Council"** — a triangle of specialised AI agents that negotiate ticket resolution using local ONNX inference, Hybrid Search (BM25 + pgvector), and Procedural Skill Activation, all without trusting a cloud LLM for classification decisions.
-
----
-
-## Architecture: The 4-Agent Council
-
-```
-[Analyser Agent]  →  PII Scrub + 384d Embedding
-      ↓
-[Manager Council] →  Hybrid RRF Search (BM25 + pgvector, k=60) → Domain Bids
-      ↓
-[Triage Decider]  →  ONNX WASM Inference (≥0.70 consensus check vs bids)
-      ↓
-[Synthesis Layer] →  Skill DAG Activation (agentic_skills table)
-      ↓
-   Resolution OR NEEDS_HUMAN
-```
-
-### Agent Roles
-
-| Agent | Input | Output |
-|---|---|---|
-| **Analyser** | Raw user text | Sanitized text + 384d vector (AES-256-GCM Encrypted) |
-| **Manager Council** | Text + vector | Top-5 RRF results, domain bid scores |
-| **Triage Decider** | 384d vector | Category + confidence (ONNX Logistic Regression, threshold 0.55) |
-| **Synthesis Layer** | Winning category | Procedural Skill DAG (cloud or offline) |
-
-### Fallback Chains (Guaranteed uptime)
-
-| Condition | Fallback |
-|---|---|
-| ONNX unavailable | JSON Logistic Regression weights |
-| Embeddings unavailable | Groq unified call (Path B) |
-| Fully offline + no embeddings | BM25 keyword search + Skill DAG (Path C) |
+An advanced, privacy-first IT Helpdesk system engineered for enterprise environments, wrapped in a **Honey & Cream** gamified persona called **Sugoi** — your sarcastic but brilliant Japanese tech-helper.
 
 ---
 
-## Core Capabilities
+## 🍯 How to Use This Website
 
-1. **Zero-Trust PII Redaction & Application-Level Encryption** — Local BERT NER (WASM) intercepts and masks names, IPs, emails before any data leaves the server. Then, the sanitized payload is subjected to Application-Level Encryption (AES-256-GCM) with a 32-byte secret before database insertion, guaranteeing absolute privacy.
-2. **Air-Gapped ONNX Classification** — A Scikit-Learn Logistic Regression model is exported to ONNX via `skl2onnx` and loaded natively by `onnxruntime-web` (WASM). No native C++ binary issues at inference time.
-3. **Category Compressor & Hybrid Search (BM25 + pgvector)** — The `hybrid_search_tickets` Supabase RPC fuses lexical BM25 rankings with semantic cosine similarity scores using Reciprocal Rank Fusion (k=60), giving the Manager Council richer context than pure vector search. The dataset is compressed into 6 core IT categories.
-4. **Enterprise Auth** — The Admin portal is secured by Supabase Passwordless Auth (Magic Links) and Row-Level Security (RLS) on the tickets table.
-5. **Procedural Skill DAGs** — The `agentic_skills` table stores 6 deterministic runbooks (one per category). In cloud mode, Groq synthesises these into natural language. In offline mode, they are returned raw with a `[SKILL ACTIVATED: OFFLINE MODE]` badge.
-6. **Agentic Outage Detection** — If ≥3 similar tickets arrive within 72 hours, the system auto-drafts a Master Incident Runbook and mass-communication template.
+1.  **Describe Your Issue**: Type your technical problem (max 1,000 chars).
+2.  **Submit**: Click "Summon Incident". Watch the **Action Stream** show real-time agent negotiation.
+3.  **Council Duel**: Watch as Gemini and Groq "duel" to create the best step-by-step diagnostic runbook.
+4.  **Tune the System**: Visit **Settings** to change models, adjust auto-resolve thresholds, or toggle "Shadow Brain" offline mode.
 
 ---
 
-## Tech Stack
+## 🧠 Problems Faced & Solutions Implemented
 
-| Layer | Technology |
-|---|---|
-| Frontend & API | Next.js 16, React 19, TailwindCSS, Framer Motion |
-| Database | Supabase PostgreSQL + `pgvector` + GIN FTS index |
-| ML (Local NER + Embed) | `@xenova/transformers` (WASM) |
-| ML (Classifier) | `onnxruntime-web` (WASM) + JSON fallback |
-| LLM Synthesis | Groq API (`llama-3.3-70b-versatile`) |
-| Auth & Security | Supabase Magic Link Auth, RLS, Node.js Crypto (AES-256-GCM) |
-| Rate Limiting | Upstash Redis |
-| Training | Python, Scikit-Learn (LogisticRegression), SentenceTransformers, skl2onnx |
+### 🚀 Architectural Problems
+*   **Problem: Single-Model Bias**: Relying on one LLM for resolutions can be risky.
+    *   **Solution**: Implemented the **Council Duel**. We trigger Gemini and Groq in parallel and select the winner based on technical detail density.
+*   **Problem: Administrative Blindness**: Admins couldn't see or change how the "Council" made decisions.
+    *   **Solution**: Built a **High-Fidelity Settings Dashboard**. Admins now have granular control over confidence thresholds, active models, and persona prompts.
 
----
+### 🧠 Machine Learning Problems
+*   **Problem: Input Overload**: Pasting 10,000 characters of logs would crash the local BERT model.
+    *   **Solution**: Implemented a hard 1,000-character **Local character guard** and strict API payload validation.
+*   **Problem: PII Leakage**: Standard LLMs can leak sensitive data (IPs, emails).
+    *   **Solution**: Integrated a **Local BERT NER** model that runs entirely on the edge to redact PII *before* it ever touches a cloud API.
 
-## Getting Started
+### 💻 Frontend Problems
+*   **Problem: Small-Screen Chaos**: On tablets or smaller windows, the 3-column layout would overflow.
+    *   **Solution**: Implemented a **Responsive Sidebar** that hides on smaller screens, and a flexible grid that scales based on viewport width.
 
-### Prerequisites
-- Node.js v18+
-- Python 3.9+ (for training only)
-- Supabase project (pgvector enabled)
-- Groq API Key
-
-### 1. Clone & Install
-```bash
-git clone https://github.com/bitbroke/Nasscom-R2.git
-cd Nasscom-R2
-npm install
-```
-
-### 2. Environment Variables
-Create `.env.local`:
-```env
-GROQ_API_KEY=your_groq_api_key
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-UPSTASH_REDIS_REST_URL=your_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_redis_token
-```
-
-### 3. Database Setup
-Run both files in your Supabase SQL editor **in order**:
-```
-supabase/schema.sql      ← creates all tables, FTS index, RRF function
-supabase/seed_skills.sql ← seeds 6 procedural Skill DAGs
-```
-
-### 4. Train & Export the ONNX Model
-```bash
-pip install scikit-learn sentence-transformers pandas skl2onnx onnxruntime numpy
-cd scripts
-python train_lr.py
-# Outputs: ../data/lr_model.json AND ../public/models/classifier.onnx
-```
-
-### 5. Run Locally
-```bash
-npm run dev
-```
-Navigate to `http://localhost:3000`.
+### ⚙️ Backend Problems
+*   **Problem: Unauthorized Data Access**: The admin ticket list was initially public.
+    *   **Solution**: Secured all Admin routes with **Supabase Server-Side Sessions**. Only authenticated users can access triage telemetry.
 
 ---
 
-## Test Cases
+## ✨ Features
 
-| Test | Mode | Expected |
-|---|---|---|
-| "PostgreSQL deadlock on payroll query" | Cloud | ONNX → Database (>70%), Skill DAG via Groq |
-| "VPN keeps disconnecting" | Air-Gapped | ONNX → Network, raw Skill DAG + `[SKILL ACTIVATED: OFFLINE MODE]` |
-| "My keyboard feels weird during a picnic" | Cloud | ONNX confidence <70% → NEEDS_HUMAN |
-| Submit VPN crash 3× | Cloud | Master Incident auto-triggered on 3rd submission |
+*   🍯 **Council Duel**: Parallel Gemini + Groq synthesis.
+*   ⚙️ **Advanced Configuration**: Live-tuning of AI thresholds & personas.
+*   🔐 **Zero-Trust PII Redaction**: Local BERT-based scrubbing.
+*   🏛️ **Council Orchestration**: Multi-agent consensus logic.
+*   🔍 **Hybrid RRF Search**: BM25 + pgvector fusion.
+*   🎭 **Interactive Sugoi Persona**: Mood-based mascot animations.
+*   📱 **Responsive Design**: Optimized for desktop and mobile viewports.
 
 ---
 
-## Deployment
+## 🚀 Tech Stack
 
-See [`PROJECT_DESCRIPTION.md`](./PROJECT_DESCRIPTION.md) for the full deployment guide (Vercel + Render).
-
-> **Note on `onnxruntime-web`:** This uses a WebAssembly backend. It works perfectly on localhost, Render, and Vercel serverless functions without hitting the 50MB bundle limits associated with native C++ binaries. The system also supports automatic fallbacks guaranteeing zero downtime.
+*   **Next.js 16**, **Tailwind v4**, **GSAP**, **Framer Motion**.
+*   **ONNX Runtime Web**, **Xenova Transformers**.
+*   **Supabase (pgvector Auth)**, **Upstash Redis**.
+*   **Gemini 2.0 Flash**, **Groq Llama 3.3**.

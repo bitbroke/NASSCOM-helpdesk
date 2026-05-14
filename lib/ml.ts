@@ -141,14 +141,22 @@ class PipelineSingleton {
         return null;
       }
 
+      // Temperature scaling: T=1.0 for neutral, honest confidence scores
+      const TEMPERATURE = 1.0;
+      const logProbs = probs.map(p => Math.log(Math.max(p, 1e-10)) / TEMPERATURE);
+      const maxLogP = Math.max(...logProbs);
+      const scaledExps = logProbs.map(lp => Math.exp(lp - maxLogP));
+      const scaledSum = scaledExps.reduce((a, b) => a + b, 0);
+      const sharpenedProbs = scaledExps.map(e => e / scaledSum);
+
       let maxProb = -1;
       let bestIdx = 0;
-      for (let i = 0; i < probs.length; i++) {
-        if (probs[i] > maxProb) { maxProb = probs[i]; bestIdx = i; }
+      for (let i = 0; i < sharpenedProbs.length; i++) {
+        if (sharpenedProbs[i] > maxProb) { maxProb = sharpenedProbs[i]; bestIdx = i; }
       }
 
       const allProbs: Record<string, number> = {};
-      classes.forEach((cat, i) => { allProbs[cat] = probs[i] ?? 0; });
+      classes.forEach((cat, i) => { allProbs[cat] = sharpenedProbs[i] ?? 0; });
 
       return { category: classes[bestIdx], confidence: maxProb, allProbs };
     } catch (err: any) {

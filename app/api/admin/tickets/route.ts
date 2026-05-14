@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+  const supabaseServer = await createClient();
+  const { data: { session } } = await supabaseServer.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized access. Session required." }, { status: 401 });
   }
 
   try {

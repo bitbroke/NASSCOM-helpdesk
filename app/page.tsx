@@ -1,466 +1,504 @@
 "use client";
-
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Zap, CheckCircle2, ShieldAlert, Trash2, Wifi, WifiOff, Sparkles, Terminal, ChevronRight, Activity, LayoutDashboard, Database, Settings, BookOpen, Clock } from "lucide-react";
+import { Toaster, toast } from "react-hot-toast";
+import { DualLogTerminal } from "@/components/sugoi/DualLogTerminal";
+import { RoastQuickReplies } from "@/components/sugoi/RoastQuickReplies";
+import { useSugoiStore } from "@/store/useSugoiStore";
+import Link from "next/link";
+import { processTicketWithFallback } from "@/lib/apiInterceptor";
+import { ResolutionCard } from "@/components/sugoi/ResolutionCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Zap, ShieldAlert, CheckCircle2, Terminal, Network, Sun, Moon, Trash2, Wand2, Cpu, Activity } from "lucide-react";
+
+const MascotForMood: Record<string, string> = {
+  idle: "/sugoi-idle.png",
+  thinking: "/sugoi-focus.png",
+  judging: "/sugoi-judge.png",
+  "dead-inside": "/sugoi-judge.png",
+  "glowing-eyes": "/sugoi-judge.png",
+  crying: "/sugoi-fail.png",
+  happy: "/sugoi-win.png",
+};
+
+const GREETINGS = [
+  "Welcome to the Crash Shrine, I am Sugoi to fix problems caused by confidence.",
+  "Welcome to the Panic Portal, I am Sugoi to professionally google your issue.",
+  "Welcome to the Reboot Realm, I am Sugoi to ask if you tried turning it off and on again.",
+  "Welcome to the Lag Lounge, I am Sugoi to suffer through unstable Wi-Fi with you.",
+  "Welcome to the Bug Dungeon, I am Sugoi to debug your code and your life choices.",
+  "Welcome to the Glitch Garden, I am Sugoi to water your bugs until they become features.",
+  "Welcome to Ticket-sama’s Palace, I am Sugoi to answer tickets marked ‘URGENT’ for no reason.",
+  "Welcome to the Error Dojo, I am Sugoi to restore peace, stability, and missing files.",
+  "Welcome to the Blue Screen Café, I am Sugoi to serve hot fixes and emotional support.",
+  "Welcome to the Chaos Cluster, I am Sugoi to survive your deployment decisions.",
+  "Welcome to the Wi-Fi Wasteland, I am Sugoi to reconnect humanity one router at a time.",
+  "Welcome to the Ctrl+Alt+Del Temple, I am Sugoi to resurrect frozen laptops.",
+  "Welcome to the Escalation Abyss, I am Sugoi to explain why the printer is spiritually broken.",
+  "Welcome to the Productivity Graveyard, I am Sugoi to fight the ancient curse called ‘Excel corruption.’",
+  "Welcome to DevOops Headquarters, I am Sugoi to protect production from interns.",
+  "Welcome to Cache-sama’s Domain, I am Sugoi to blame everything on cached data.",
+  "Welcome to the Forbidden Server Room, I am Sugoi to touch cables dramatically until things work.",
+  "Welcome to the Technical Support Arc, I am Sugoi to carry your team harder than the backend server.",
+  "Welcome to the Digital Disaster Dojo, I am Sugoi to fix bugs created moments before the deadline."
+];
+
+const TYPING_STATUSES = [
+  "Sugoi is questioning your ticket...",
+  "Searching ancient Stack Overflow scrolls...",
+  "Pretending this is documented...",
+  "Fighting demons inside the server...",
+  "Consulting the Silicon Gods...",
+  "Applying emergency kawaii protocols...",
+  "Buffering emotional intelligence..."
+];
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-4 w-full my-4">
+      <hr className="flex-1 border-taupe/30" />
+      <h3 className="text-[10px] font-bold text-taupe uppercase tracking-widest">
+        {title}
+      </h3>
+      <hr className="flex-1 border-taupe/30" />
+    </div>
+  );
+}
 
 export default function SubmissionPortal() {
   const [issueText, setIssueText] = useState("");
   const [logText, setLogText] = useState("");
   const [isAirGapped, setIsAirGapped] = useState(false);
-  const [isDark, setIsDark] = useState(true);
-  
   const [loading, setLoading] = useState(false);
   const [ticketStatus, setTicketStatus] = useState<string | null>(null);
   const [thoughtProcess, setThoughtProcess] = useState<string[]>([]);
   const [finalResolution, setFinalResolution] = useState<string | null>(null);
   const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
+  const [predictedCategory, setPredictedCategory] = useState<string | null>(null);
+  const [welcomeMsg, setWelcomeMsg] = useState("");
+  const [currentTyping, setCurrentTyping] = useState<string | null>(null);
+  const [agenticTrace, setAgenticTrace] = useState<any>(null);
 
-  // Initialize theme
+  const persona = useSugoiStore((s) => s.persona);
+  const game = useSugoiStore((s) => s.game);
+  const setMood = useSugoiStore((s) => s.setMood);
+  const setPower = useSugoiStore((s) => s.setPower);
+  const damageEnemy = useSugoiStore((s) => s.damageEnemy);
+  const resetRPG = useSugoiStore((s) => s.resetRPG);
+  const setChaosLevel = useSugoiStore((s) => s.setChaosLevel);
+  const addAchievement = useSugoiStore((s) => s.addAchievement);
+  const settings = useSugoiStore((s) => s.settings);
+
+  const mood = persona.mood;
+
+  const [activeTab, setActiveTab] = useState<"stream" | "resolution">("stream");
+
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
+    setWelcomeMsg(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
+  }, []);
+
+  useEffect(() => {
+    if (loading) {
+      const interval = setInterval(() => {
+        setCurrentTyping(TYPING_STATUSES[Math.floor(Math.random() * TYPING_STATUSES.length)]);
+      }, 2000);
+      setCurrentTyping(TYPING_STATUSES[0]);
+      return () => clearInterval(interval);
     } else {
-      document.documentElement.classList.remove('dark');
+      setCurrentTyping(null);
     }
-  }, [isDark]);
+  }, [loading]);
 
-  const examplePrompts = [
-    { label: "Network Outage", text: "The VPN is down! I am working remotely and my Cisco AnyConnect keeps failing to authenticate." },
-    { label: "DB Deadlock", text: "The production PostgreSQL database is throwing deadlock errors when I try to run the monthly payroll query." },
-    { label: "Password Reset", text: "I can't log in to my email. I think my password expired over the weekend." },
-    { label: "Software Crash", text: "I cannot open Microsoft Outlook. Every time I click the app, it instantly crashes and throws an Error Code 0x8004010F." }
-  ];
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      setMousePos({ x: (e.clientX / window.innerWidth - 0.5) * 8, y: (e.clientY / window.innerHeight - 0.5) * 4 });
+    };
+    window.addEventListener("mousemove", handler);
+    return () => window.removeEventListener("mousemove", handler);
+  }, []);
 
-  function loadExample(text: string) {
-    setIssueText(text);
-  }
+  useEffect(() => {
+    document.documentElement.style.setProperty('--honey', settings.accentColor);
+    // Approximate a lighter version for gradients
+    const hex = settings.accentColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    document.documentElement.style.setProperty('--honey-light', `rgba(${r}, ${g}, ${b}, 0.6)`);
+  }, [settings.accentColor]);
+
+  const animationProps = settings.animationsEnabled ? {} : { animate: false, initial: false, exit: false };
 
   function clearForm() {
-    setIssueText("");
-    setLogText("");
-    setTicketStatus(null);
-    setThoughtProcess([]);
-    setFinalResolution(null);
-    setConfidenceScore(null);
+    setIssueText(""); setLogText(""); setTicketStatus(null);
+    setThoughtProcess([]); setFinalResolution(null);
+    setConfidenceScore(null); setPredictedCategory(null); resetRPG();
+    setMood("idle"); setActiveTab("stream"); setAgenticTrace(null);
   }
 
   async function submitTicket() {
-    if (!issueText.trim()) return;
-    setLoading(true);
-    setTicketStatus(null);
-    setThoughtProcess([]);
-    setFinalResolution(null);
-    setConfidenceScore(null);
-
+    if (loading || !issueText.trim()) return;
+    setLoading(true); setTicketStatus(null); setThoughtProcess([]);
+    setFinalResolution(null); setConfidenceScore(null); setPredictedCategory(null);
+    setAgenticTrace(null);
+    resetRPG(); setMood("thinking"); setActiveTab("stream");
     setThoughtProcess(["System initialized. Opening secure pipeline..."]);
 
-    const MAX_RETRIES = 2;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (attempt > 0) {
-          setThoughtProcess(prev => [...prev, `Re-establishing secure connection... (${attempt}/${MAX_RETRIES})`]);
-          await new Promise(r => setTimeout(r, 3000));
-        }
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000);
-
-        const res = await fetch("/api/process-ticket", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rawText: issueText, logContent: logText, useLLM: !isAirGapped }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeout);
-        const data = await res.json();
-        
-        if (res.ok) {
-          setThoughtProcess(data.thoughtProcess || []);
-          if (data.status === "SUCCESS") {
-            setTicketStatus("AUTO_RESOLVED");
-            setFinalResolution(data.resolution);
-            setConfidenceScore(data.confidenceScore);
-          } else {
-            setTicketStatus("ESCALATED");
-            setFinalResolution("Complexity exceeds safe autonomous limits. Priority routed to human L2 engineering team.");
-            setConfidenceScore(data.confidenceScore);
-          }
-          setLoading(false);
-          return;
-        } else {
-          setThoughtProcess(prev => [...prev, "Connection severed. Packet loss detected."]);
-          setTicketStatus("ESCALATED");
-          setFinalResolution("Error connecting to neural cluster. Routed to human queue.");
-          setLoading(false);
-          return;
-        }
-      } catch(err) {
-        if (attempt === MAX_RETRIES) {
-          setTicketStatus("ESCALATED");
-          setFinalResolution("Neural cluster unresponsive. Forced routing to human queue.");
-        }
+    try {
+      if (issueText.length > 50) {
+        addAchievement({ id: "desc_pro", title: "Explained Problem Clearly", icon: "💎" });
       }
-    }
+      if (logText.trim().length > 0) {
+        addAchievement({ id: "log_master", title: "Actually Attached Logs", icon: "🏆" });
+      }
 
-    setLoading(false);
+      setChaosLevel(game.chaosLevel + 15);
+      const data = await processTicketWithFallback(issueText, logText, !isAirGapped);
+      setChaosLevel(game.chaosLevel - 10);
+      setAgenticTrace({
+        action: data.supervisor_action,
+        keywords: data.keywords,
+        tool_data: data.tool_data
+      });
+      setThoughtProcess(data.thoughtProcess || []);
+      setPredictedCategory(data.category || null);
+      
+      if (data.status === "SUCCESS") {
+        setTicketStatus("AUTO_RESOLVED");
+        setFinalResolution(data.resolution);
+        setConfidenceScore(data.confidenceScore);
+        
+        if (data.confidenceScore) {
+          setPower(Math.floor(data.confidenceScore * 100));
+          damageEnemy(Math.floor(data.confidenceScore * 100));
+        }
+        
+        setMood("happy");
+        setTimeout(() => setActiveTab("resolution"), 600);
+      } else {
+        setTicketStatus("ESCALATED");
+        setFinalResolution("Complexity exceeds autonomous limits. Routed to L2 human expert.");
+        setConfidenceScore(data.confidenceScore);
+        setMood("crying");
+      }
+    } catch (err: any) {
+      setTicketStatus("ESCALATED");
+      setFinalResolution(`Error: ${err.message || "Unknown error occurred"}`);
+      setMood("crying");
+      toast.error("Process failed. Escalating...");
+    } finally {
+      setLoading(false);
+    }
   }
 
+  const confPercent = confidenceScore !== null ? Math.round(confidenceScore * 100) : null;
+  const circumference = 2 * Math.PI * 40;
+  const dashOffset = confPercent !== null ? circumference - (confPercent / 100) * circumference : circumference;
+  const confColor = confPercent !== null ? (confPercent >= 65 ? "#16a34a" : confPercent >= 45 ? "#ca8a04" : "#dc2626") : "var(--honey)";
+
   return (
-    <div className="min-h-screen transition-colors duration-500 bg-slate-50 dark:bg-[#030303] text-slate-900 dark:text-slate-200 font-sans p-4 sm:p-8 overflow-x-hidden relative">
-      
-      {/* Background Ambient Orbs (Only visible in dark mode for premium feel) */}
-      <div className="hidden dark:block absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="hidden dark:block absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+    <div className="min-h-screen w-full flex bg-taupe/10" style={{ color: "var(--charcoal)" }}>
+      <Toaster position="top-right" toastOptions={{ style: { background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px)", color: "var(--charcoal)", border: "1px solid rgba(212,160,23,0.2)", borderRadius: "16px", fontSize: "13px", fontWeight: "600" } }} />
 
-      <div className="max-w-5xl mx-auto relative z-10">
-        
-        {/* Header */}
-        <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center space-x-5"
-          >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-gradient-to-tr from-cyan-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-[0_0_40px_-5px_rgba(79,70,229,0.4)] dark:shadow-[0_0_40px_-10px_rgba(6,182,212,0.6)] border border-white/20 relative group">
-              <div className="absolute inset-0 rounded-[1.2rem] bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
-              <Network className="text-white w-7 h-7 relative z-10" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white flex items-center gap-3">
-                CAPTAIN OBVIOUS <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-[10px] uppercase tracking-widest text-indigo-600 dark:text-indigo-400 font-black border border-indigo-500/20 shadow-sm">L1 ARCHITECT</span>
-              </h1>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-500 tracking-[0.3em] uppercase mt-1.5 flex items-center gap-2">
-                <span className="w-8 h-[1px] bg-slate-300 dark:bg-slate-800" /> 
-                Zero-Trust Enterprise Triage
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            {/* Theme Toggle */}
-            <motion.button
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-              onClick={() => setIsDark(!isDark)}
-              className="p-3 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </motion.button>
-
-            {/* Air-Gapped Toggle Switch */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="flex items-center space-x-4 bg-white dark:bg-white/[0.03] backdrop-blur-xl px-5 py-3 rounded-2xl border border-slate-200 dark:border-white/5 shadow-md dark:shadow-xl"
-            >
-              <div className="flex flex-col items-end mr-2">
-                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!isAirGapped ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-600'}`}>Cloud Sync</span>
-                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors mt-1 ${isAirGapped ? 'text-rose-600 dark:text-rose-400 dark:drop-shadow-[0_0_5px_rgba(251,113,133,0.5)]' : 'text-slate-400 dark:text-slate-600'}`}>Air-Gapped</span>
-              </div>
-              
-              <button 
-                onClick={() => setIsAirGapped(!isAirGapped)}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all focus:outline-none ${isAirGapped ? 'bg-rose-100 dark:bg-rose-500/20 border border-rose-300 dark:border-rose-500/50 shadow-inner' : 'bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-cyan-500/50 shadow-inner'}`}
-              >
-                <span className="sr-only">Toggle Security Mode</span>
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full transition-all duration-300 shadow-sm ${isAirGapped ? 'translate-x-7 bg-rose-500 dark:bg-rose-400 dark:shadow-[0_0_10px_rgba(251,113,133,0.8)]' : 'translate-x-1 bg-cyan-500 dark:bg-cyan-400 dark:shadow-[0_0_10px_rgba(6,182,212,0.8)]'}`}
-                />
-              </button>
+      {/* ═══ SIDEBAR ═══ */}
+      <aside className="hidden md:flex w-[68px] shrink-0 h-screen sticky top-0 flex-col items-center py-5 gap-1.5 z-50" style={{ borderRight: "1px solid rgba(212,160,23,0.08)" }}>
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-5 font-black text-white text-sm" style={{ background: "linear-gradient(135deg, var(--honey), var(--honey-light))" }}>S</div>
+        {[
+          { icon: LayoutDashboard, id: "dashboard", active: true, href: "/" },
+          { icon: Database, id: "admin", active: false, href: "/admin" },
+          { icon: Settings, id: "settings", active: false, href: "/settings" },
+        ].map((item) => (
+          <Link key={item.id} href={item.href}>
+            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 ${item.active ? "sidebar-icon-active" : "hover:bg-white/60"}`}
+              style={!item.active ? { color: "var(--text-muted)" } : {}}>
+              <item.icon className="w-[18px] h-[18px]" />
             </motion.div>
+          </Link>
+        ))}
+        <div className="flex-1" />
+        <div className="flex flex-col items-center gap-1 mb-2">
+          <div className={`w-2 h-2 rounded-full ${isAirGapped ? "bg-red-400" : "bg-green-400"}`} style={{ boxShadow: isAirGapped ? "0 0 8px rgba(248,113,113,0.6)" : "0 0 8px rgba(74,222,128,0.6)" }} />
+          <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>{isAirGapped ? "OFF" : "ON"}</span>
+        </div>
+      </aside>
+
+      {/* ═══ MAIN ═══ */}
+      <main className="flex-1 min-h-screen flex flex-col overflow-hidden">
+        <header className="h-14 shrink-0 flex items-center justify-between px-6 z-30" style={{ borderBottom: "1px solid rgba(212,160,23,0.06)" }}>
+          <div className="flex items-center gap-3">
+            <h1 className="text-base font-bold font-display" style={{ color: "var(--charcoal)" }}>Triage Console</h1>
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(212,160,23,0.08)", color: "var(--honey)" }}>v3.2</span>
           </div>
+          <button onClick={() => setIsAirGapped(!isAirGapped)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer glass-inner hover:bg-white/60"
+            style={{ color: isAirGapped ? "#dc2626" : "#16a34a", border: `1px solid ${isAirGapped ? "rgba(220,38,38,0.15)" : "rgba(34,197,94,0.15)"}` }}>
+            {isAirGapped ? <WifiOff className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
+            {isAirGapped ? "Offline" : "Cloud"}
+          </button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* LEFT COMPONENT: Submission Form */}
-          <motion.section 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-5 flex flex-col space-y-6"
-          >
-            <div className="bg-white dark:bg-white/[0.02] backdrop-blur-2xl p-7 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-xl dark:shadow-2xl relative overflow-hidden group">
-              
-              {/* Subtle hover gradient inside card (Dark mode only) */}
-              <div className="hidden dark:block absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="flex-1 relative overflow-y-auto">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute top-[-10%] right-[-5%] w-[45%] h-[50%] rounded-full animate-blob" style={{ background: "radial-gradient(circle, rgba(212,160,23,0.06) 0%, transparent 70%)", filter: "blur(80px)" }} />
+          </div>
 
-              <div className="relative z-10 space-y-6">
+          <div className="relative z-10 h-full flex gap-4 p-4">
+
+            {/* ═══ LEFT: CHARACTER + INPUT (compact) ═══ */}
+            {settings.mascotVisible && (
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} {...animationProps}
+                className="w-[240px] shrink-0 flex flex-col gap-3">
+
+              {/* Character */}
+              <div className="glass-panel border-taupe/40 rounded-3xl p-3 flex flex-col items-center relative overflow-hidden">
+                <div className="absolute inset-0 opacity-20 transition-all duration-1000" style={{
+                  background: mood === "happy" ? "radial-gradient(circle at 50% 60%, rgba(34,197,94,0.3), transparent 70%)" :
+                    mood === "crying" ? "radial-gradient(circle at 50% 60%, rgba(239,68,68,0.3), transparent 70%)" :
+                    mood === "thinking" ? "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.3), transparent 70%)" :
+                    "radial-gradient(circle at 50% 60%, rgba(212,160,23,0.2), transparent 70%)"
+                }} />
+                <motion.div animate={{ y: loading ? [0, -6, 0] : [0, -3, 0], rotate: mousePos.x * 0.3 }}
+                  transition={{ y: { duration: loading ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }, rotate: { duration: 0.3 } }}
+                  className="relative z-10 w-32 h-32">
+                  <img src={MascotForMood[mood] || "/sugoi-idle.png"} alt="Sugoi" className="w-full h-full object-contain drop-shadow-lg transition-all duration-500" />
+                </motion.div>
+                <div className="flex items-center gap-2 mt-1 relative z-10">
+                  <h3 className="text-sm font-bold font-display text-gradient-honey">Sugoi</h3>
+                  <div className={`w-1.5 h-1.5 rounded-full ${loading ? "animate-pulse" : ""}`}
+                    style={{ background: mood === "happy" ? "#22c55e" : mood === "crying" ? "#ef4444" : "var(--honey)" }} />
+                </div>
+              </div>
+
+              {/* Dialogue */}
+              <motion.div key={mood} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className="glass-panel border-taupe/40 rounded-2xl p-3 relative bg-white/40">
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 glass-panel border-taupe/40 bg-white/40" />
+                <p className="text-[11px] leading-relaxed font-bold text-center italic" style={{ color: "var(--soft-black)" }}>
+                  {loading ? currentTyping : (finalResolution ? "Redemption Arc complete. (ᵕ—ᴗ—)" : (issueText ? "Analyzing your life choices... (☉_☉)" : welcomeMsg))}
+                </p>
+              </motion.div>
+
+                <div className="glass-panel border-taupe/40 rounded-2xl p-3">
+                  <SectionHeader title="Quick Issues" />
+                  <RoastQuickReplies onSelect={(t) => setIssueText(t)} />
+                </div>
+              </motion.div>
+            )}
+
+            {/* ═══ CENTER: INPUT + OUTPUT ═══ */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex-1 flex flex-col min-w-0 gap-6">
+
+              {/* MAIN DESCRIBE ISSUE INPUT (Prominent Center) */}
+              <div className="glass-panel border-taupe/60 rounded-3xl p-5 shadow-[0_12px_40px_-12px_rgba(168,154,128,0.25)] relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                  <Terminal className="w-24 h-24" />
+                </div>
                 
-                {/* Feature: Quick Fill Chips */}
-                <div>
-                   <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> Secure Input
-                  </h2>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="w-full text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
-                      <Wand2 className="w-3 h-3" /> Quick Examples
-                    </span>
-                    {examplePrompts.map((p, idx) => (
-                      <Badge 
-                        key={idx} 
-                        variant="outline" 
-                        className="cursor-pointer hover:bg-cyan-50 dark:hover:bg-cyan-900/30 hover:border-cyan-200 dark:hover:border-cyan-500/50 transition-colors py-1.5 text-xs text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10"
-                        onClick={() => loadExample(p.text)}
-                      >
-                        {p.label}
-                      </Badge>
+                <div className="flex flex-col gap-4 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-taupe uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-brand-orange" /> Describe your IT Issue
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-bold text-taupe/40 uppercase tracking-widest">Pipeline v3.2</span>
+                      <div className="flex gap-1">
+                        <div className="w-1 h-1 rounded-full bg-brand-orange animate-pulse" />
+                        <div className="w-1 h-1 rounded-full bg-taupe/20" />
+                        <div className="w-1 h-1 rounded-full bg-taupe/20" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-taupe/20 to-brand-orange/20 rounded-2xl blur opacity-25 group-focus-within:opacity-100 transition duration-700" />
+                    <div className="relative bg-white/80 border-2 border-taupe/20 rounded-2xl p-4 focus-within:border-brand-orange/40 transition-all shadow-sm">
+                      <textarea 
+                        className="w-full bg-transparent border-none outline-none text-slate-800 placeholder-taupe/30 resize-none text-lg font-bold leading-relaxed h-[110px] custom-scrollbar"
+                        placeholder="e.g., 'VPN keeps disconnecting with TLS handshake timeout...' or 'DB cluster at 100% CPU...'"
+                        value={issueText} onChange={(e) => setIssueText(e.target.value)}
+                        maxLength={1000}
+                      />
+                      
+                      <div className="flex items-center justify-between mt-3 pt-4 border-t border-taupe/10">
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="text-[10px] bg-taupe/5 border-taupe/10 text-taupe/70 font-bold px-2">LOCAL INFERENCE</Badge>
+                          <Badge variant="outline" className="text-[10px] bg-emerald-50/50 border-emerald-100 text-emerald-600 font-bold px-2">SCRUBBING ACTIVE</Badge>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                          <Button 
+                            onClick={clearForm}
+                            variant="ghost" className="h-10 px-4 text-taupe/60 hover:text-red-500 hover:bg-red-50 transition-colors font-bold text-xs uppercase tracking-wider"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Clear
+                          </Button>
+                          <Button 
+                            onClick={submitTicket}
+                            disabled={loading || !issueText.trim()}
+                            className={`h-11 px-8 ${loading ? 'glitch-bg' : ''} bg-brand-orange hover:bg-orange-500 text-gray-900 font-black shadow-lg shadow-brand-orange/20 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
+                          >
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />} 
+                            {loading ? "EMERGENCY PROTOCOLS..." : "SUMMON INCIDENT"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tab bar */}
+              <div className="glass-panel border-taupe/40 rounded-2xl flex flex-col overflow-hidden flex-1 min-h-0">
+                <div className="flex p-1.5 shrink-0" style={{ borderBottom: "1px solid rgba(212,160,23,0.06)" }}>
+                  <button onClick={() => setActiveTab("stream")}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === "stream" ? "bg-white shadow-sm" : "hover:bg-white/40"}`}
+                    style={{ color: activeTab === "stream" ? "var(--charcoal)" : "var(--text-muted)" }}>
+                    <Terminal className="w-3 h-3" /> Action Stream
+                  </button>
+                  <button onClick={() => setActiveTab("resolution")}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === "resolution" ? "bg-white shadow-sm" : "hover:bg-white/40"}`}
+                    style={{ color: activeTab === "resolution" ? "var(--charcoal)" : "var(--text-muted)" }}>
+                    <BookOpen className="w-3 h-3" /> Solution
+                    {finalResolution && ticketStatus === "AUTO_RESOLVED" && <span className="w-1.5 h-1.5 rounded-full bg-green-400 ml-1" />}
+                  </button>
+                </div>
+                <div className="flex-1 relative overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    {activeTab === "stream" ? (
+                      <motion.div key="stream" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar">
+                        <DualLogTerminal thoughtProcess={thoughtProcess} loading={loading} agenticTrace={agenticTrace} />
+                      </motion.div>
+                    ) : (
+                      <motion.div key="resolution" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute inset-0 p-5 overflow-y-auto custom-scrollbar">
+                        {finalResolution ? (
+                          <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-2 mb-2 pb-3" style={{ borderBottom: "1px solid rgba(212,160,23,0.1)" }}>
+                              {ticketStatus === "AUTO_RESOLVED" ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <ShieldAlert className="w-4 h-4 text-red-500" />}
+                              <span className="text-xs font-bold" style={{ color: ticketStatus === "AUTO_RESOLVED" ? "#16a34a" : "#dc2626" }}>
+                                {ticketStatus === "AUTO_RESOLVED" ? "Auto-Resolved" : "Escalated to Human"}
+                              </span>
+                              {predictedCategory && (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold tracking-wide uppercase text-[9px] ml-auto">
+                                  {predictedCategory}
+                                </Badge>
+                              )}
+                            </div>
+                            <ResolutionCard resolutionText={finalResolution} />
+                          </div>
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-center">
+                            <BookOpen className="w-8 h-8 mb-3 opacity-15" style={{ color: "var(--honey)" }} />
+                            <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>No solution yet</p>
+                            <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Submit a ticket to see Sugoi&apos;s solution here.</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* ═══ RIGHT: METRICS (compact) ═══ */}
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
+              className="w-[180px] shrink-0 flex flex-col gap-3">
+
+              {/* Confidence Ring */}
+              <div className="glass-panel border-taupe/40 rounded-2xl p-4 flex flex-col items-center relative">
+                <svg className="w-20 h-20 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(212,160,23,0.1)" strokeWidth="5" />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke={confColor} strokeWidth="5" strokeLinecap="round"
+                    strokeDasharray={circumference} strokeDashoffset={dashOffset}
+                    style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)" }} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingBottom: "20px" }}>
+                  <span className="text-xl font-black font-display" style={{ color: confColor }}>{confPercent !== null ? `${confPercent}%` : "--"}</span>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] mt-1" style={{ color: "var(--text-muted)" }}>Confidence</span>
+              </div>
+
+              {/* Category */}
+              <div className="glass-panel border-taupe/40 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                <Activity className="w-5 h-5 text-amber-500 mb-2" />
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold tracking-wide uppercase text-[10px]">
+                  {predictedCategory || "Infrastructure"}
+                </Badge>
+                <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-widest">Category</span>
+              </div>
+
+              {/* RPG BATTLE UI */}
+              <div className="glass-panel border-taupe/40 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-taupe uppercase tracking-widest">Sugoi HP</span>
+                  <span className="text-[9px] font-black text-emerald-600">LVL 99</span>
+                </div>
+                <div className="w-full h-2 bg-taupe/10 rounded-full overflow-hidden">
+                  <motion.div animate={{ width: "100%" }} className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
+                </div>
+                
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[9px] font-black text-taupe uppercase tracking-widest">Bug Health</span>
+                  <span className="text-[9px] font-black text-red-500">BOSS BATTLE</span>
+                </div>
+                <div className="w-full h-2 bg-taupe/10 rounded-full overflow-hidden">
+                  <motion.div animate={{ width: `${game.enemyHealth}%` }} className="h-full bg-gradient-to-r from-red-500 to-red-700" />
+                </div>
+              </div>
+
+              {/* Chaos Meter */}
+              <div className="glass-panel border-taupe/40 rounded-2xl p-3 flex flex-col items-center">
+                <span className="text-[8px] font-black text-taupe uppercase tracking-[0.2em] mb-2">Chaos Probability</span>
+                <div className="relative w-full h-8 bg-taupe/5 rounded-lg border border-taupe/20 overflow-hidden flex items-center justify-center">
+                  <motion.div 
+                    animate={{ width: `${game.chaosLevel}%` }} 
+                    className="absolute inset-0 bg-gradient-to-r from-brand-orange/10 to-brand-orange/40" 
+                  />
+                  <span className="relative z-10 text-xs font-black text-taupe">{game.chaosLevel}%</span>
+                </div>
+              </div>
+
+              {/* Achievements */}
+              {game.achievements.length > 0 && (
+                <div className="glass-panel border-taupe/40 rounded-2xl p-3">
+                  <SectionHeader title="Achievements" />
+                  <div className="flex flex-wrap gap-2">
+                    {game.achievements.map((a) => (
+                      <div key={a.id} title={a.title} className="w-8 h-8 rounded-lg bg-white/60 border border-taupe/20 flex items-center justify-center text-sm shadow-sm hover:scale-110 transition-transform">
+                        {a.icon}
+                      </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-3 ml-1">
-                    <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Issue Description</label>
-                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">{issueText.length} chars</span>
-                  </div>
-                  <textarea
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all resize-none h-32 placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner custom-scrollbar"
-                    placeholder="E.g. The production DB is locking up, my IP is 192.168.1.5..."
-                    value={issueText}
-                    onChange={e => setIssueText(e.target.value)}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3 ml-1 flex items-center justify-between">
-                    <span>System Logs</span>
-                    <span className="text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-white/10 px-2 py-0.5 rounded-full text-[8px]">OPTIONAL</span>
-                  </label>
-                  <textarea
-                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 border-dashed rounded-2xl p-4 font-mono text-xs text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all resize-none h-24 placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner custom-scrollbar"
-                    placeholder="Paste stack traces or raw logs here..."
-                    value={logText}
-                    onChange={e => setLogText(e.target.value)}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={submitTicket} 
-                    disabled={loading || !issueText.trim()}
-                    className="flex-1 h-14 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold tracking-wide transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] dark:shadow-[0_0_20px_-5px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] dark:hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.6)] disabled:opacity-50 disabled:cursor-not-allowed border border-transparent dark:border-white/10 group overflow-hidden relative"
-                  >
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-                    {loading ? (
-                      <span className="flex items-center space-x-3 text-sm">
-                        <Loader2 className="w-5 h-5 animate-spin text-cyan-200" />
-                        <span className="font-mono uppercase tracking-widest text-cyan-50">Processing...</span>
-                      </span>
+              {/* Pipeline */}
+              <div className="glass-panel border-taupe/40 rounded-2xl p-3 space-y-2">
+                <SectionHeader title="Pipeline" />
+                {[
+                  { label: "PII Scrub", done: thoughtProcess.length > 2 },
+                  { label: "Embedding", done: thoughtProcess.length > 4 },
+                  { label: "RAG Search", done: thoughtProcess.length > 6 },
+                  { label: "ONNX Triage", done: thoughtProcess.length > 8 },
+                  { label: "Synthesis", done: !!finalResolution },
+                ].map((step, i) => (
+                  <div key={i} className={`flex items-center gap-2 text-sm ${!step.done ? "opacity-60" : ""}`}>
+                    {step.done ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                     ) : (
-                      <span className="uppercase tracking-widest text-sm text-white">Engage Pipeline</span>
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
                     )}
-                  </Button>
-                  <Button
-                    onClick={clearForm}
-                    variant="outline"
-                    className="h-14 px-4 rounded-2xl border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 dark:hover:border-rose-900/50 transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </motion.section>
-
-          {/* RIGHT COMPONENT: AI Observability UI */}
-          <motion.section 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-7 flex flex-col h-[650px] lg:h-[700px]"
-          >
-            <div className="h-full bg-slate-900 dark:bg-[#09090b] border border-slate-800 dark:border-white/10 shadow-2xl dark:shadow-black/50 flex flex-col rounded-[2rem] overflow-hidden relative">
-              
-              {/* Terminal Header */}
-              <div className="shrink-0 px-6 py-4 border-b border-slate-800 dark:border-white/5 bg-slate-950/50 dark:bg-white/[0.01] flex items-center justify-between backdrop-blur-md z-20">
-                <div className="flex items-center space-x-4">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-inner">
-                    <Terminal className="w-4 h-4 text-cyan-400" />
+                    <span className={`font-medium ${step.done ? "text-slate-700" : "text-slate-500"}`}>{step.label}</span>
                   </div>
-                  <div>
-                    <h2 className="font-mono text-slate-200 dark:text-slate-300 text-xs uppercase tracking-[0.2em] font-black">Neural Core Telemetry</h2>
-                    <p className="text-[9px] text-slate-600 font-mono mt-0.5 tracking-wider uppercase">{thoughtProcess.length > 0 ? `${thoughtProcess.length} ops active` : 'system idle'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {loading && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                      <span className="text-[10px] text-cyan-400 font-mono uppercase tracking-wider">Live</span>
-                    </div>
-                  )}
-                  {ticketStatus && (
-                    <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-                      <Badge className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold border-0 shadow-lg ${
-                        ticketStatus === 'AUTO_RESOLVED' 
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-emerald-500/20' 
-                          : 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-rose-500/20'
-                      }`}>
-                        {ticketStatus.replace("_", " ")}
-                      </Badge>
-                    </motion.div>
-                  )}
-                </div>
+                ))}
               </div>
-              
-              {/* Terminal Output — native scrollable div replaces ScrollArea for reliable flex containment */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-6 font-mono text-[13px] text-slate-400 custom-scrollbar relative z-10">
-                <AnimatePresence>
-                  {thoughtProcess.length === 0 && !loading && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-center py-16">
-                      <div className="relative mb-6">
-                        <div className="w-16 h-16 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 flex items-center justify-center">
-                          <Cpu className="w-7 h-7 text-cyan-500/30" />
-                        </div>
-                        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
-                          <Activity className="w-2.5 h-2.5 text-slate-600" />
-                        </div>
-                      </div>
-                      <p className="text-slate-600 text-sm mb-1">Awaiting telemetry stream</p>
-                      <p className="text-slate-700 text-xs">Submit a ticket to engage the Multi-Agent Council</p>
-                      <div className="flex items-center gap-4 mt-6 text-[10px] text-slate-700 font-mono">
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500/30" />Analyser</span>
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-indigo-500/30" />Manager</span>
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/30" />Triage</span>
-                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-cyan-500/30" />Synthesis</span>
-                      </div>
-                    </motion.div>
-                  )}
-                  {thoughtProcess.map((step, i) => (
-                    <motion.div 
-                      key={i} 
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mb-3 flex items-start group"
-                    >
-                      <span className="text-cyan-500/60 mr-3 mt-0.5 shrink-0 group-hover:text-cyan-400 transition-colors text-xs">{String(i + 1).padStart(2, '0')}</span> 
-                      <span className={`leading-relaxed break-words overflow-wrap-anywhere ${
-                        step.includes('✅') ? 'text-emerald-400' : 
-                        step.includes('⚠') || step.includes('Error') ? 'text-rose-400' : 
-                        step.includes('⚡') ? 'text-amber-400' : 
-                        step.includes('Council verdict') ? 'text-white font-semibold' :
-                        'text-slate-300'
-                      }`}>
-                        {step.startsWith('[Analyser') && <span className="text-emerald-400 mr-1.5 inline-flex"><Activity className="w-3 h-3 self-center" /></span>}
-                        {step.startsWith('[Manager') && <span className="text-indigo-400 mr-1.5 inline-flex"><Network className="w-3 h-3 self-center" /></span>}
-                        {step.startsWith('[Triage') && <span className="text-amber-400 mr-1.5 inline-flex"><ShieldAlert className="w-3 h-3 self-center" /></span>}
-                        {step.startsWith('[Synthesis') && <span className="text-cyan-400 mr-1.5 inline-flex"><Wand2 className="w-3 h-3 self-center" /></span>}
-                        
-                        {step.split(/(\[.*?\])/).map((part, index) => 
-                          part.startsWith('[') && part.endsWith(']') ? 
-                          <span key={index} className="font-black tracking-tight">{part}</span> : 
-                          part
-                        )}
-                      </span>
-                    </motion.div>
-                  ))}
-                  {loading && thoughtProcess.length > 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 flex items-center space-x-2 text-cyan-500">
-                       <span className="w-2 h-4 bg-cyan-500 animate-pulse block" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+            </motion.div>
 
-              {/* Resolution Panel */}
-              <AnimatePresence>
-                {finalResolution && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className={`shrink-0 border-t backdrop-blur-2xl relative z-20 overflow-hidden ${
-                      ticketStatus === 'AUTO_RESOLVED' 
-                        ? 'bg-emerald-950/40 border-emerald-500/20' 
-                        : 'bg-rose-950/40 border-rose-500/20'
-                    }`}
-                  >
-                    <div className="p-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          {ticketStatus === 'AUTO_RESOLVED' ? (
-                            <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            </div>
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                              <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                            </div>
-                          )}
-                          <h3 className={`text-xs uppercase tracking-widest font-bold ${
-                            ticketStatus === 'AUTO_RESOLVED' ? 'text-emerald-400' : 'text-rose-400'
-                          }`}>Diagnostic Result</h3>
-                        </div>
-                        
-                        {confidenceScore !== null && (
-                           <div className="bg-black/40 px-2.5 py-1 rounded-lg border border-white/5 flex items-center space-x-2">
-                             <span className="text-[9px] uppercase font-bold text-slate-500 tracking-[0.15em]">Conf</span>
-                             <span className={`text-xs font-mono font-bold ${confidenceScore >= 0.8 ? 'text-emerald-400' : confidenceScore >= 0.5 ? 'text-amber-400' : 'text-rose-400'}`}>
-                               {(confidenceScore * 100).toFixed(1)}%
-                             </span>
-                           </div>
-                        )}
-                      </div>
-                      
-                      <div className={`text-[13px] leading-relaxed max-h-[220px] lg:max-h-[280px] overflow-y-auto custom-scrollbar pr-3 break-words ${
-                        ticketStatus === 'AUTO_RESOLVED' ? 'text-emerald-100/90' : 'text-rose-100/90'
-                      }`}>
-                        <div className="space-y-3 pb-2">
-                          {/* Advanced text splitting to handle newlines and common list formats */}
-                          {finalResolution.split(/\n|(?=\s*(?:\d+\.|\*|-)\s)/).map((line, i) => {
-                            const trimmed = line.trim();
-                            if (!trimmed) return null;
-                            
-                            // Detect formatting
-                            const isBold = trimmed.startsWith('**') || trimmed.startsWith('##');
-                            const isBullet = /^(?:\d+\.|\*|-)\s/.test(trimmed);
-                            
-                            return (
-                              <div key={i} className={`transition-all duration-300 ${
-                                isBold ? 'font-black text-white mt-5 mb-2 text-sm uppercase tracking-wider' : 
-                                isBullet ? 'pl-6 relative border-l-2 border-white/10 ml-1 py-1 bg-white/5 rounded-r-lg' : 'opacity-80'
-                              }`}>
-                                {isBullet && (
-                                  <span className="absolute left-0 top-3 w-3 h-[1px] bg-white/30" />
-                                )}
-                                {trimmed.replace(/\*\*/g, '').replace(/^##\s*/, '')}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-            </div>
-          </motion.section>
-
+          </div>
         </div>
-      </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.2); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.4); }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
-        
-        .overflow-wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
-        
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
-        }
-      `}} />
+      </main>
     </div>
   );
 }
