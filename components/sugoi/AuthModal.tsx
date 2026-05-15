@@ -7,9 +7,10 @@ import { createClient } from '@/utils/supabase/client'
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
+  redirectPath?: string
 }
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProps) {
   const [loading, setLoading] = useState<string | null>(null)
 
   const handleOAuth = async (provider: 'google' | 'github') => {
@@ -22,7 +23,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/admin`
+        redirectTo: `${window.location.origin}/auth/callback?next=${redirectPath}`
       }
     })
     if (error) {
@@ -49,15 +50,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-sm glass-panel border-taupe/40 rounded-[32px] p-8 shadow-2xl overflow-hidden bg-white/80"
+            className="relative w-full max-w-sm glass-panel border-taupe/40 rounded-[32px] p-8 shadow-2xl overflow-hidden bg-white/90"
           >
-            {/* Close Button */}
+            {/* Close Button - Highlighted with brand color */}
             <button 
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-taupe/10 transition-colors text-taupe/60"
+              className="absolute top-4 right-4 p-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 transition-all text-brand-orange border border-brand-orange/30 shadow-sm"
+              id="auth-modal-close"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
@@ -110,10 +112,29 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
               </div>
 
+              {/* Highlighted Navigation Buttons */}
+              <div className="pt-4 grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => { window.location.href = '/'; onClose(); }}
+                  className="px-4 py-2.5 rounded-xl border border-brand-orange/30 bg-brand-orange/5 text-brand-orange text-[10px] font-black uppercase tracking-wider hover:bg-brand-orange hover:text-white transition-all shadow-sm"
+                  id="go-to-dashboard"
+                >
+                  Go to Dashboard
+                </button>
+                <button 
+                  onClick={() => { window.location.href = '/'; onClose(); }}
+                  className="px-4 py-2.5 rounded-xl border border-brand-orange/30 bg-brand-orange/5 text-brand-orange text-[10px] font-black uppercase tracking-wider hover:bg-brand-orange hover:text-white transition-all shadow-sm"
+                  id="go-to-home"
+                >
+                  Go to Home
+                </button>
+              </div>
+
               <div className="pt-2">
                 <button 
                   onClick={onClose}
-                  className="text-[10px] font-black uppercase tracking-widest text-taupe/40 hover:text-taupe transition-colors"
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-taupe/20 text-taupe/60 text-[10px] font-black uppercase tracking-[0.2em] hover:border-brand-orange/40 hover:text-brand-orange hover:bg-brand-orange/5 transition-all"
+                  id="skip-for-now"
                 >
                   Skip for now
                 </button>

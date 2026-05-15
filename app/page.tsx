@@ -12,6 +12,8 @@ import { ResolutionCard } from "@/components/sugoi/ResolutionCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AuthModal } from "@/components/sugoi/AuthModal";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 const MascotForMood: Record<string, string> = {
   idle: "/sugoi-idle.png",
@@ -81,6 +83,9 @@ export default function SubmissionPortal() {
   const [currentTyping, setCurrentTyping] = useState<string | null>(null);
   const [agenticTrace, setAgenticTrace] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authRedirectPath, setAuthRedirectPath] = useState('/');
+  const router = useRouter();
+  const supabase = createClient();
 
   const persona = useSugoiStore((s) => s.persona);
   const game = useSugoiStore((s) => s.game);
@@ -216,15 +221,36 @@ export default function SubmissionPortal() {
           { icon: LayoutDashboard, id: "dashboard", active: true, href: "/" },
           { icon: Database, id: "admin", active: false, href: "/admin" },
           { icon: Settings, id: "settings", active: false, href: "/settings" },
-        ].map((item) => (
-          <Link key={item.id} href={item.href}>
-            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 ${item.active ? "sidebar-icon-active" : "hover:bg-white/60"}`}
-              style={!item.active ? { color: "var(--text-muted)" } : {}}>
-              <item.icon className="w-[18px] h-[18px]" />
-            </motion.div>
-          </Link>
-        ))}
+        ].map((item) => {
+          if (item.id === "admin") {
+            return (
+              <motion.div key={item.id}
+                whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+                onClick={async () => {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session) {
+                    router.push('/admin');
+                  } else {
+                    setAuthRedirectPath('/admin');
+                    setIsAuthModalOpen(true);
+                  }
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 ${item.active ? "sidebar-icon-active" : "hover:bg-white/60"}`}
+                style={!item.active ? { color: "var(--text-muted)" } : {}}>
+                <item.icon className="w-[18px] h-[18px]" />
+              </motion.div>
+            );
+          }
+          return (
+            <Link key={item.id} href={item.href}>
+              <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 ${item.active ? "sidebar-icon-active" : "hover:bg-white/60"}`}
+                style={!item.active ? { color: "var(--text-muted)" } : {}}>
+                <item.icon className="w-[18px] h-[18px]" />
+              </motion.div>
+            </Link>
+          );
+        })}
         <div className="flex-1" />
         <div className="flex flex-col items-center gap-1 mb-2">
           <div className={`w-2 h-2 rounded-full ${isAirGapped ? "bg-red-400" : "bg-green-400"}`} style={{ boxShadow: isAirGapped ? "0 0 8px rgba(248,113,113,0.6)" : "0 0 8px rgba(74,222,128,0.6)" }} />
@@ -527,7 +553,14 @@ export default function SubmissionPortal() {
           </div>
         </div>
       </main>
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthRedirectPath('/'); // Reset to default
+        }} 
+        redirectPath={authRedirectPath}
+      />
     </div>
   );
 }
