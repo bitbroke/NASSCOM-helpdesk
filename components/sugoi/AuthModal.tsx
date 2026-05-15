@@ -53,13 +53,15 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
             className="relative w-full max-w-sm glass-panel border-taupe/40 rounded-[32px] p-8 shadow-2xl overflow-hidden bg-white/90"
           >
             {/* Close Button - Highlighted with brand color */}
+            {/* Close Button - Premium Highlighted */}
             <button 
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-full bg-brand-orange/10 hover:bg-brand-orange/20 transition-all text-brand-orange border border-brand-orange/30 shadow-sm"
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-brand-orange text-white hover:bg-orange-600 transition-all shadow-[0_4px_12px_rgba(212,160,23,0.4)] hover:scale-110 active:scale-95 z-50 border-2 border-white/40 group"
               id="auth-modal-close"
+              aria-label="Close"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-4 h-4 transition-transform group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
@@ -116,24 +118,25 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
               <div className="pt-4 grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => { window.location.href = '/'; onClose(); }}
-                  className="px-4 py-2.5 rounded-xl border border-brand-orange/30 bg-brand-orange/5 text-brand-orange text-[10px] font-black uppercase tracking-wider hover:bg-brand-orange hover:text-white transition-all shadow-sm"
+                  className="group relative px-4 py-3 rounded-xl bg-gradient-to-br from-brand-orange to-honey text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-[0_8px_20px_-6px_rgba(212,160,23,0.5)] hover:shadow-[0_12px_24px_-6px_rgba(212,160,23,0.6)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 overflow-hidden border border-white/20"
                   id="go-to-dashboard"
                 >
-                  Go to Dashboard
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="relative z-10">Go to Dashboard</span>
                 </button>
                 <button 
                   onClick={() => { window.location.href = '/'; onClose(); }}
-                  className="px-4 py-2.5 rounded-xl border border-brand-orange/30 bg-brand-orange/5 text-brand-orange text-[10px] font-black uppercase tracking-wider hover:bg-brand-orange hover:text-white transition-all shadow-sm"
+                  className="group relative px-4 py-3 rounded-xl bg-white border-2 border-brand-orange text-brand-orange text-[10px] font-black uppercase tracking-wider transition-all shadow-sm hover:bg-brand-orange/5 hover:border-honey hover:text-honey hover:shadow-[0_8px_20px_-6px_rgba(212,160,23,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
                   id="go-to-home"
                 >
-                  Go to Home
+                  <span className="relative z-10">Go to Home</span>
                 </button>
               </div>
 
               <div className="pt-2">
                 <button 
                   onClick={onClose}
-                  className="w-full py-3 rounded-xl border-2 border-dashed border-taupe/20 text-taupe/60 text-[10px] font-black uppercase tracking-[0.2em] hover:border-brand-orange/40 hover:text-brand-orange hover:bg-brand-orange/5 transition-all"
+                  className="w-full py-4 rounded-xl border-2 border-dashed border-brand-orange/50 text-brand-orange text-[11px] font-black uppercase tracking-[0.3em] bg-white/50 backdrop-blur-sm hover:bg-brand-orange hover:text-white hover:border-brand-orange transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
                   id="skip-for-now"
                 >
                   Skip for now
