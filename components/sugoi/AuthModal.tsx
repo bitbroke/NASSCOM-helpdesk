@@ -114,24 +114,6 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
                 </button>
               </div>
 
-              {/* Highlighted Navigation Buttons */}
-              <div className="pt-4 grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => { window.location.href = '/'; onClose(); }}
-                  className="group relative px-4 py-3 rounded-xl bg-gradient-to-br from-brand-orange to-honey text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-[0_8px_20px_-6px_rgba(212,160,23,0.5)] hover:shadow-[0_12px_24px_-6px_rgba(212,160,23,0.6)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 overflow-hidden border border-white/20"
-                  id="go-to-dashboard"
-                >
-                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="relative z-10">Go to Dashboard</span>
-                </button>
-                <button 
-                  onClick={() => { window.location.href = '/'; onClose(); }}
-                  className="group relative px-4 py-3 rounded-xl bg-white border-2 border-brand-orange text-brand-orange text-[10px] font-black uppercase tracking-wider transition-all shadow-sm hover:bg-brand-orange/5 hover:border-honey hover:text-honey hover:shadow-[0_8px_20px_-6px_rgba(212,160,23,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
-                  id="go-to-home"
-                >
-                  <span className="relative z-10">Go to Home</span>
-                </button>
-              </div>
 
               <div className="pt-2">
                 <button 

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Zap, CheckCircle2, ShieldAlert, Trash2, Wifi, WifiOff, Sparkles, Terminal, ChevronRight, Activity, LayoutDashboard, Database, Settings, BookOpen, Clock } from "lucide-react";
+import { Loader2, Zap, CheckCircle2, ShieldAlert, Trash2, Wifi, WifiOff, Sparkles, Terminal, ChevronRight, Activity, LayoutDashboard, Database, Settings, BookOpen, Clock, LogOut, User as UserIcon } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import { DualLogTerminal } from "@/components/sugoi/DualLogTerminal";
 import { RoastQuickReplies } from "@/components/sugoi/RoastQuickReplies";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { AuthModal } from "@/components/sugoi/AuthModal";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 
 const MascotForMood: Record<string, string> = {
   idle: "/sugoi-idle.png",
@@ -84,6 +85,7 @@ export default function SubmissionPortal() {
   const [agenticTrace, setAgenticTrace] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authRedirectPath, setAuthRedirectPath] = useState('/');
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -104,10 +106,25 @@ export default function SubmissionPortal() {
   useEffect(() => {
     setWelcomeMsg(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
     
-    // Trigger modal on every refresh for demo purposes
-    setTimeout(() => {
-      setIsAuthModalOpen(true);
-    }, 1500); 
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        // Only trigger modal if no user is signed in
+        setTimeout(() => {
+          setIsAuthModalOpen(true);
+        }, 1500); 
+      }
+    };
+
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -265,11 +282,41 @@ export default function SubmissionPortal() {
             <h1 className="text-base font-bold font-display" style={{ color: "var(--charcoal)" }}>Sugoi Support</h1>
             <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(212,160,23,0.08)", color: "var(--honey)" }}>v3.2</span>
           </div>
-          <button onClick={() => setIsAirGapped(!isAirGapped)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer glass-inner hover:bg-white/60"
-            style={{ color: isAirGapped ? "#dc2626" : "#16a34a", border: `1px solid ${isAirGapped ? "rgba(220,38,38,0.15)" : "rgba(34,197,94,0.15)"}` }}>
-            {isAirGapped ? <WifiOff className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
-            {isAirGapped ? "Offline" : "Cloud"}
-          </button>
+          
+          <div className="flex items-center gap-4">
+            <button onClick={() => setIsAirGapped(!isAirGapped)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer glass-inner hover:bg-white/60"
+              style={{ color: isAirGapped ? "#dc2626" : "#16a34a", border: `1px solid ${isAirGapped ? "rgba(220,38,38,0.15)" : "rgba(34,197,94,0.15)"}` }}>
+              {isAirGapped ? <WifiOff className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
+              {isAirGapped ? "Offline" : "Cloud"}
+            </button>
+
+            {user && (
+              <div className="flex items-center gap-3 pl-4 border-l border-taupe/10">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black text-slate-800 leading-none">
+                    {user.user_metadata.full_name || user.email?.split('@')[0]}
+                  </span>
+                  <button 
+                    onClick={() => supabase.auth.signOut()}
+                    className="text-[8px] font-bold text-taupe hover:text-red-500 transition-colors uppercase tracking-widest mt-0.5"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+                {user.user_metadata.avatar_url ? (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full border border-brand-orange/20 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-brand-orange/10 flex items-center justify-center border border-brand-orange/20">
+                    <UserIcon className="w-4 h-4 text-brand-orange" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </header>
 
         <div className="flex-1 relative overflow-y-auto">
