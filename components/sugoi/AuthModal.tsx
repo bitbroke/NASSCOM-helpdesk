@@ -50,7 +50,7 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-sm glass-panel border-taupe/40 rounded-[32px] p-8 shadow-2xl overflow-hidden bg-white/90"
+            className="relative w-full max-w-sm glass-panel border-taupe/40 dark:border-taupe/50 rounded-[32px] p-8 shadow-2xl overflow-hidden bg-white/90 dark:bg-slate-900/95"
           >
             {/* Close Button - Highlighted with brand color */}
             {/* Close Button - Premium Highlighted */}
@@ -73,7 +73,7 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
                 <div className="inline-block px-3 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-[10px] font-bold uppercase tracking-widest mb-2">
                   Access Required
                 </div>
-                <h2 className="text-2xl font-black font-display text-slate-800">Welcome Back</h2>
+                <h2 className="text-2xl font-black font-display text-slate-800 dark:text-slate-100">Welcome Back</h2>
                 <p className="text-xs font-medium text-taupe leading-relaxed">
                   Sign in to access advanced triage analytics and the Multi-Agent Council dashboard.
                 </p>
@@ -83,7 +83,7 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
                 <button
                   onClick={() => handleOAuth('google')}
                   disabled={loading !== null}
-                  className="w-full flex items-center justify-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all bg-white border border-taupe/20 text-slate-700 hover:shadow-md hover:border-brand-orange/30 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-3 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all bg-white dark:bg-slate-800 border border-taupe/20 dark:border-taupe/40 text-slate-700 dark:text-slate-200 hover:shadow-md hover:border-brand-orange/30 disabled:opacity-50"
                 >
                   {loading === 'google' ? (
                     <span className="w-5 h-5 border-2 border-taupe/20 border-t-brand-orange rounded-full animate-spin" />
@@ -118,7 +118,7 @@ export function AuthModal({ isOpen, onClose, redirectPath = '/' }: AuthModalProp
               <div className="pt-2">
                 <button 
                   onClick={onClose}
-                  className="w-full py-4 rounded-xl border-2 border-dashed border-brand-orange/50 text-brand-orange text-[11px] font-black uppercase tracking-[0.3em] bg-white/50 backdrop-blur-sm hover:bg-brand-orange hover:text-white hover:border-brand-orange transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+                  className="w-full py-4 rounded-xl border-2 border-dashed border-brand-orange/50 text-brand-orange text-[11px] font-black uppercase tracking-[0.3em] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:bg-brand-orange hover:text-white hover:border-brand-orange transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
                   id="skip-for-now"
                 >
                   Skip for now

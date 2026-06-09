@@ -45,7 +45,7 @@ export function RoastQuickReplies({ onSelect }: RoastQuickRepliesProps) {
         <motion.button key={idx}
           whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(212,160,23,0.15)" }}
           whileTap={{ scale: 0.97, y: 0 }}
-          onClick={() => { opt.action(); onSelect(opt.text); }}
+          onClick={() => { opt.action(); onSelect(opt.text); window.dispatchEvent(new CustomEvent("sugoi-quick-issue")); }}
           className="text-[11px] font-semibold py-2 px-3.5 rounded-full transition-all cursor-pointer glass-inner hover:bg-white/60"
           style={{ color: "var(--soft-black)", border: "1px solid rgba(212,160,23,0.12)" }}
         >

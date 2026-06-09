@@ -25,7 +25,7 @@ export function rerank(docs: any[], query: string): any[] {
 
   return docs
     .map(doc => {
-      const docText = (doc.sanitized_query || '').toLowerCase();
+      const docText: string = (doc.sanitized_query || '').toLowerCase();
       const docTokens = new Set(docText.split(/\s+/));
 
       // 1. Basic keyword overlap
