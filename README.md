@@ -1,4 +1,4 @@
-# Sugoi Bot: Honey & Cream Zero-Trust IT Helpdesk
+# Sugoi Bot: Zero-Trust IT Helpdesk
 ### Multi-Agent Council Architecture · Council Duel Synthesis v3.5 · Premium GSAP UX
 
 An advanced, privacy-first IT Helpdesk system engineered for enterprise environments, wrapped in a **Honey & Cream** gamified persona called **Sugoi** — your sarcastic but brilliant Japanese tech-helper.
