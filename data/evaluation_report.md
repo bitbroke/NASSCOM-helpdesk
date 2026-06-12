@@ -57,3 +57,5 @@
 2. **Semantic Similarity**: Both the LLM-generated resolution and the ground-truth resolution are embedded. Cosine similarity is computed between the two vectors.
 3. **LLM-as-Judge**: A separate LLM call reviews each resolution against the original issue and ground truth, scoring 1–5 on correctness, completeness, and relevance.
 4. **Stratified Sampling**: Equal numbers of tickets are drawn from each category to avoid class imbalance bias.
+
+## Improvements
