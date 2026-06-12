@@ -4,7 +4,7 @@ import { motion, TargetAndTransition } from "framer-motion";
 import { useSugoiStore, Mood } from "@/store/useSugoiStore";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import gsap from "gsap";
+import { animate } from "animejs";
 
 const MascotImages: Record<Mood, string> = {
   idle: "/sugoi-idle.png",
@@ -30,15 +30,22 @@ export function SugoiMascot({ size = "hero" }: { size?: "nav" | "hero" | "worksp
   const mood = useSugoiStore((state) => state.persona.mood);
   const glowRef = useRef<HTMLDivElement>(null);
 
-  // GSAP ambient glow pulse
+  // Anime.js ambient glow pulse
   useEffect(() => {
+    let anim: any;
     if (glowRef.current) {
-      gsap.to(glowRef.current, {
-        opacity: 0.6, scale: 1.15,
-        duration: 2.5, repeat: -1, yoyo: true,
-        ease: "sine.inOut",
+      anim = animate(glowRef.current, {
+        opacity: 0.6,
+        scale: 1.15,
+        duration: 2500,
+        loop: true,
+        direction: "alternate",
+        easing: "easeInOutSine",
       });
     }
+    return () => {
+      if (anim) anim.cancel();
+    };
   }, []);
 
   if (size === "nav") {

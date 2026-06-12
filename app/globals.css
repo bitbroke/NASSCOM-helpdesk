@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Ultra&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -194,6 +195,10 @@
    ══════════════════════════════════════════ */
 .font-display {
   font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.font-ultra {
+  font-family: 'Ultra', serif;
 }
 
 /* ══════════════════════════════════════════
@@ -659,4 +664,11 @@
 .scene-content-layer {
   position: relative;
   z-index: 1;
+}
+
+/* Force Vanta trunk container and its canvas to have transparent background */
+.vanta-trunk-container,
+.vanta-trunk-container canvas {
+  background: transparent !important;
+  background-color: transparent !important;
 }

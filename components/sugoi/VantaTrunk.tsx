@@ -73,6 +73,14 @@ export function VantaTrunk({ theme, accentColor, className }: VantaTrunkProps) {
     const VANTA = (window as any).VANTA;
     if (!VANTA || !VANTA.TRUNK) return;
 
+    const p5 = (window as any).p5;
+    if (p5 && p5.prototype && !p5.prototype.background.isOverridden) {
+      p5.prototype.background = function (this: any) {
+        this.clear();
+      };
+      p5.prototype.background.isOverridden = true;
+    }
+
     // Destroy existing instance
     if (vantaRef.current) {
       vantaRef.current.destroy();
@@ -99,6 +107,17 @@ export function VantaTrunk({ theme, accentColor, className }: VantaTrunkProps) {
         spacing: 1.5,
         chaos: 2.0,
       });
+
+      // Clear any background style Vanta or p5 set on the container to ensure absolute transparency
+      if (containerRef.current) {
+        containerRef.current.style.background = "transparent";
+        containerRef.current.style.backgroundColor = "transparent";
+        const canvas = containerRef.current.querySelector("canvas");
+        if (canvas) {
+          canvas.style.background = "transparent";
+          canvas.style.backgroundColor = "transparent";
+        }
+      }
     } catch (err) {
       console.error("Vanta.Trunk initialization error:", err);
     }
@@ -114,8 +133,10 @@ export function VantaTrunk({ theme, accentColor, className }: VantaTrunkProps) {
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden ${className || "w-full h-full rounded-2xl shadow-inner border border-taupe/15 dark:border-taupe/30"}`}
-      style={{ minHeight: "110px" }}
+      className={`vanta-trunk-container overflow-hidden ${className || "w-full h-full rounded-2xl shadow-inner border border-taupe/15 dark:border-taupe/30"}`}
+      style={{
+        minHeight: "110px"
+      }}
     />
   );
 }
