@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const supabaseServer = await createClient();
+  if (!supabaseServer) {
+    return NextResponse.json({ error: "Unauthorized access. Session required." }, { status: 401 });
+  }
   const { data: { session } } = await supabaseServer.auth.getSession();
 
   if (!session) {

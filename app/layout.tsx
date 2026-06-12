@@ -30,12 +30,21 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${playfair.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="preload" href="/L.vrm" as="fetch" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet" />
+      </head>
       <body
         className="min-h-full flex flex-col"
         style={{ background: 'var(--bg-primary)', color: 'var(--charcoal)', fontFamily: "'Inter', system-ui, sans-serif" }}
       >
-        {children}
+        <div className="scene-content-layer flex-1 flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );
 }
+

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Ultra&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -52,7 +53,7 @@
 /* ══════════════════════════════════════════
    DESIGN TOKENS — Honey & Cream Aesthetic
    ══════════════════════════════════════════ */
-:root, .dark {
+:root {
   /* Canvas */
   --bg-primary: #FDF8F0;
   --bg-secondary: #F7F2E8;
@@ -117,6 +118,63 @@
   --sidebar-ring: oklch(0.7 0.14 75);
 }
 
+.dark {
+  /* Canvas — deep rich dark with subtle blue undertone */
+  --bg-primary: #06060E;
+  --bg-secondary: #0C0C1A;
+  --bg-card: rgba(14, 14, 26, 0.75);
+
+  /* Honey Accent Palette (brighter contrast for dark) */
+  --honey: #F5A623;
+  --honey-light: #FBBF24;
+  --amber-glow: #FDE68A;
+  --gold-light: #FEF3C7;
+  --honey-deep: #D4A017;
+
+  /* Typography */
+  --charcoal: #F1F5F9;
+  --soft-black: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  /* Glass Material for Dark Mode — richer, more visible */
+  --glass-bg: rgba(14, 14, 28, 0.72);
+  --glass-border: rgba(245, 166, 35, 0.08);
+  --glass-hover: rgba(18, 18, 36, 0.82);
+  --glass-shadow: rgba(0, 0, 0, 0.5);
+
+  /* Terminal (Dark Warm Mode) */
+  --terminal-bg: rgba(8, 8, 16, 0.9);
+  --terminal-text: #E2E8F0;
+  --terminal-accent: #F5A623;
+
+  /* Shadcn overrides for dark mode */
+  --background: oklch(0.12 0.02 280);
+  --foreground: oklch(0.98 0.01 85);
+  --card: oklch(0.15 0.02 280);
+  --card-foreground: oklch(0.98 0.01 85);
+  --popover: oklch(0.15 0.02 280);
+  --popover-foreground: oklch(0.98 0.01 85);
+  --primary: oklch(0.75 0.14 75);
+  --primary-foreground: oklch(0.12 0.02 280);
+  --secondary: oklch(0.2 0.015 280);
+  --secondary-foreground: oklch(0.98 0.01 85);
+  --muted: oklch(0.18 0.015 280);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.2 0.015 280);
+  --accent-foreground: oklch(0.98 0.01 85);
+  --border: oklch(0.22 0.01 280);
+  --input: oklch(0.22 0.01 280);
+  --ring: oklch(0.75 0.14 75);
+  --sidebar: oklch(0.12 0.02 280);
+  --sidebar-foreground: oklch(0.98 0.01 85);
+  --sidebar-primary: oklch(0.75 0.14 75);
+  --sidebar-primary-foreground: oklch(0.12 0.02 280);
+  --sidebar-accent: oklch(0.2 0.015 280);
+  --sidebar-accent-foreground: oklch(0.98 0.01 85);
+  --sidebar-border: oklch(0.22 0.01 280);
+}
+
 /* ══════════════════════════════════════════
    BASE LAYER
    ══════════════════════════════════════════ */
@@ -137,6 +195,10 @@
    ══════════════════════════════════════════ */
 .font-display {
   font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.font-ultra {
+  font-family: 'Ultra', serif;
 }
 
 /* ══════════════════════════════════════════
@@ -169,6 +231,47 @@
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.04);
+}
+
+/* Dark mode glass panels — richer, more contrast */
+.dark .glass-panel {
+  box-shadow:
+    0 20px 60px -15px rgba(0, 0, 0, 0.4),
+    0 4px 20px -5px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(245, 166, 35, 0.06),
+    0 0 0 1px rgba(245, 166, 35, 0.04);
+}
+.dark .glass-panel:hover {
+  box-shadow:
+    0 25px 70px -15px rgba(245, 166, 35, 0.08),
+    0 6px 25px -5px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(245, 166, 35, 0.1),
+    0 0 40px rgba(245, 166, 35, 0.04);
+}
+
+.dark .glass-inner {
+  background: rgba(14, 14, 28, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 166, 35, 0.06);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode sidebar active icon */
+.dark .sidebar-icon-active {
+  box-shadow: 0 4px 16px -4px rgba(245, 166, 35, 0.5), 0 0 20px rgba(245, 166, 35, 0.15);
+}
+
+/* Dark mode scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(245,166,35,0.25); }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(245,166,35,0.45); }
+
+/* Dark mode neon glow intensified */
+.dark .neon-glow {
+  animation: neon-pulse-dark 4s ease-in-out infinite;
+}
+.dark .neon-glow-subtle {
+  animation: neon-pulse-dark-subtle 5s ease-in-out infinite;
 }
 
 /* ══════════════════════════════════════════
@@ -379,3 +482,193 @@
   50% { opacity: 0.5; transform: scale(1.5); }
 }
 .status-pulse { animation: status-pulse 2s ease-in-out infinite; }
+
+/* 3D Perspective Grid Background */
+@keyframes grid-slide {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 60px;
+  }
+}
+.animate-grid-slide {
+  animation: grid-slide 6s linear infinite;
+}
+
+/* ══════════════════════════════════════════
+   3D DEPTH LAYER UTILITIES
+   ══════════════════════════════════════════ */
+.scene-3d {
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+.depth-layer-1 {
+  transform: translateZ(10px);
+}
+.depth-layer-2 {
+  transform: translateZ(25px);
+}
+.depth-layer-3 {
+  transform: translateZ(45px);
+}
+
+/* Parallax wrapper — children at different depths move at different rates */
+.parallax-container {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* ══════════════════════════════════════════
+   NEON GLOW KEYFRAMES
+   ══════════════════════════════════════════ */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 5px rgba(212,160,23,0.2),
+      0 0 15px rgba(212,160,23,0.1),
+      0 0 30px rgba(212,160,23,0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 10px rgba(212,160,23,0.35),
+      0 0 25px rgba(212,160,23,0.2),
+      0 0 50px rgba(212,160,23,0.1),
+      0 0 80px rgba(212,160,23,0.05);
+  }
+}
+.neon-glow {
+  animation: neon-pulse 4s ease-in-out infinite;
+}
+
+@keyframes neon-pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(212,160,23,0.08);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212,160,23,0.15), 0 0 40px rgba(212,160,23,0.05);
+  }
+}
+.neon-glow-subtle {
+  animation: neon-pulse-subtle 5s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════
+   HOLOGRAPHIC SHIMMER
+   ══════════════════════════════════════════ */
+@keyframes holo-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.holo-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212,160,23,0.06) 25%,
+    rgba(245,166,35,0.1) 50%,
+    rgba(212,160,23,0.06) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: holo-shimmer 6s linear infinite;
+}
+
+/* ══════════════════════════════════════════
+   3D TEXT SHADOW — Depth for Headlines
+   ══════════════════════════════════════════ */
+.text-3d {
+  text-shadow:
+    0 1px 0 rgba(168,154,128,0.15),
+    0 2px 0 rgba(168,154,128,0.1),
+    0 3px 0 rgba(168,154,128,0.07),
+    0 4px 6px rgba(0,0,0,0.05);
+}
+
+.dark .text-3d {
+  text-shadow:
+    0 1px 0 rgba(245,166,35,0.2),
+    0 2px 0 rgba(245,166,35,0.1),
+    0 3px 6px rgba(0,0,0,0.3);
+}
+
+/* ══════════════════════════════════════════
+   ENHANCED GLASS PANEL — 3D Ready
+   ══════════════════════════════════════════ */
+.glass-panel-3d {
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 20px 60px -15px rgba(0, 0, 0, 0.08),
+    0 4px 20px -5px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform-style: preserve-3d;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-panel-3d:hover {
+  background: var(--glass-hover);
+  box-shadow:
+    0 25px 70px -15px rgba(212, 160, 23, 0.12),
+    0 6px 25px -5px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 30px rgba(212,160,23,0.06);
+}
+
+/* ══════════════════════════════════════════
+   FLOATING 3D GEOMETRY ANIMATION (Login page)
+   ══════════════════════════════════════════ */
+@keyframes float-rotate {
+  0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  25% { transform: translateY(-15px) rotateX(90deg) rotateY(45deg) rotateZ(25deg); }
+  50% { transform: translateY(5px) rotateX(180deg) rotateY(90deg) rotateZ(50deg); }
+  75% { transform: translateY(-10px) rotateX(270deg) rotateY(135deg) rotateZ(75deg); }
+  100% { transform: translateY(0) rotateX(360deg) rotateY(180deg) rotateZ(100deg); }
+}
+
+.float-geometry {
+  animation: float-rotate 20s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+.float-geometry-reverse {
+  animation: float-rotate 25s ease-in-out infinite reverse;
+  transform-style: preserve-3d;
+}
+.float-geometry-slow {
+  animation: float-rotate 30s ease-in-out infinite;
+  animation-delay: 3s;
+  transform-style: preserve-3d;
+}
+
+/* 3D wireframe face (CSS-only polyhedron faces) */
+.wire-face {
+  border: 1.5px solid rgba(212,160,23,0.12);
+  background: rgba(212,160,23,0.02);
+  backface-visibility: visible;
+}
+.dark .wire-face {
+  border-color: rgba(245,166,35,0.15);
+  background: rgba(245,166,35,0.03);
+}
+
+/* ══════════════════════════════════════════
+   3D SCENE CANVAS LAYER ORDER
+   ══════════════════════════════════════════ */
+.scene-bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.scene-content-layer {
+  position: relative;
+  z-index: 1;
+}
+
+/* Force Vanta trunk container and its canvas to have transparent background */
+.vanta-trunk-container,
+.vanta-trunk-container canvas {
+  background: transparent !important;
+  background-color: transparent !important;
+}
