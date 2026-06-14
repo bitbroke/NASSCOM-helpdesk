@@ -169,9 +169,9 @@ function TicketCard({ ticket, type }: { ticket: any, type: "danger" | "success" 
           <Badge variant="outline" className={badgeStyle}>
             {ticket.category || "Uncategorized"}
           </Badge>
-          {ticket.priority && (
+          {(ticket.resolution_tier || ticket.priority) && (
             <Badge variant="outline" className="text-[9px] uppercase border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold text-slate-500 dark:text-slate-400 tracking-tighter">
-              {ticket.priority}
+              {ticket.resolution_tier || ticket.priority}
             </Badge>
           )}
         </div>

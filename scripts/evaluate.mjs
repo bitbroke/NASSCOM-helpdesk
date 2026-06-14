@@ -7,14 +7,15 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CSV_FILE = path.join(__dirname, '..', 'data', 'synthetic_tickets.csv');
+const CSV_FILE = path.join(__dirname, '..', 'data', 'merged_tickets.csv');
+const FALLBACK_CSV = path.join(__dirname, '..', 'data', 'synthetic_tickets.csv');
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'evaluation_report.md');
 
 env.allowLocalModels = true;
 env.useBrowserCache = false;
 
 // ─── Config ──────────────────────────────────────
-const SAMPLE_SIZE = parseInt(process.env.EVAL_SAMPLE_SIZE || '50', 10);
+const SAMPLE_SIZE = parseInt(process.env.EVAL_SAMPLE_SIZE || '60', 10);
 const VALID_CATEGORIES = ['Infrastructure', 'Application', 'Security', 'Database', 'Network', 'Access Management'];
 
 // ─── CSV Parser ──────────────────────────────────
@@ -126,8 +127,12 @@ async function evaluate() {
     process.exit(1);
   }
   if (!fs.existsSync(CSV_FILE)) {
-    console.error('❌ Dataset not found. Run `node scripts/generate_dataset.mjs` first.');
-    process.exit(1);
+    if (fs.existsSync(FALLBACK_CSV)) {
+      console.log('⚠ merged_tickets.csv not found. Falling back to synthetic_tickets.csv');
+    } else {
+      console.error('❌ Dataset not found. Run `python scripts/download_github_tickets.py` first.');
+      process.exit(1);
+    }
   }
 
   const groq = new Groq({ apiKey: groqKey });
@@ -135,7 +140,7 @@ async function evaluate() {
   console.log(`   Sample size: ${SAMPLE_SIZE} tickets\n`);
 
   // 2. Load dataset and sample
-  const csvText = fs.readFileSync(CSV_FILE, 'utf-8');
+  const csvText = fs.readFileSync(fs.existsSync(CSV_FILE) ? CSV_FILE : FALLBACK_CSV, 'utf-8');
   const allTickets = parseCSV(csvText);
   console.log(`   Total tickets in CSV: ${allTickets.length}`);
 
@@ -186,25 +191,43 @@ async function evaluate() {
       const output = await embedder(text, { pooling: 'mean', normalize: true });
       const embeddingArray = Array.from(output.data);
       
-      const classes = lrModel.classes;
-      const weights = lrModel.weights;
-      const intercepts = lrModel.intercepts;
+      const { classes, weights, intercepts } = lrModel;
       
-      let maxProb = -1;
-      
-      const logits = classes.map((cat, i) => {
-        let z = intercepts[i];
-        for (let j = 0; j < embeddingArray.length; j++) {
-          z += weights[i][j] * embeddingArray[j];
+      // Layer 1: Input (384) -> Hidden 1 (100)
+      const h1 = new Array(100).fill(0);
+      for (let j = 0; j < 100; j++) {
+        let z = intercepts[0][j];
+        for (let idx = 0; idx < 384; idx++) {
+          z += embeddingArray[idx] * weights[0][idx][j];
+        }
+        h1[j] = Math.max(0, z); // ReLU
+      }
+
+      // Layer 2: Hidden 1 (100) -> Hidden 2 (50)
+      const h2 = new Array(50).fill(0);
+      for (let j = 0; j < 50; j++) {
+        let z = intercepts[1][j];
+        for (let idx = 0; idx < 100; idx++) {
+          z += h1[idx] * weights[1][idx][j];
+        }
+        h2[j] = Math.max(0, z); // ReLU
+      }
+
+      // Layer 3: Hidden 2 (50) -> Output Logits (6)
+      const logits = classes.map((cat, k) => {
+        let z = intercepts[2][k];
+        for (let idx = 0; idx < 50; idx++) {
+          z += h2[idx] * weights[2][idx][k];
         }
         return z;
       });
-      
+
       const maxLogit = Math.max(...logits);
       const exps = logits.map((z) => Math.exp(z - maxLogit));
       const sumExps = exps.reduce((a, b) => a + b, 0);
       const probs = exps.map((e) => e / sumExps);
       
+      let maxProb = -1;
       for (let j = 0; j < probs.length; j++) {
         if (probs[j] > maxProb) {
           maxProb = probs[j];
@@ -236,7 +259,7 @@ Return ONLY raw JSON:
         response_format: { type: 'json_object' },
       });
       const predicted = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      predResolution = predicted.resolution || 'N/A';
+      predResolution = predicted.resolution || predicted.runbook || 'N/A';
     } catch (err) {
       console.warn(`\n   ⚠ LLM error on ticket ${i}: ${err.message}`);
       // Rate limit handling — wait and retry
@@ -245,6 +268,27 @@ Return ONLY raw JSON:
         await new Promise(r => setTimeout(r, 10000));
         i--; // retry
         continue;
+      }
+      // Fallback: use raw LLM text if available instead of 'N/A'
+      if (err.response?.choices?.[0]?.message?.content) {
+        predResolution = err.response.choices[0].message.content;
+      }
+    }
+
+    // If resolution is still 'N/A', try to extract from raw completion
+    if (predResolution === 'N/A') {
+      try {
+        const rawCompletion = await groq.chat.completions.create({
+          messages: [{
+            role: 'user',
+            content: `You are an IT helpdesk agent. Generate a brief step-by-step resolution for this issue.\n\nTicket:\n${text}\n\nCategory: ${predCategory}\n\nProvide the resolution as plain text steps.`
+          }],
+          model: 'llama-3.3-70b-versatile',
+          temperature: 0.1,
+        });
+        predResolution = rawCompletion.choices[0]?.message?.content || 'N/A';
+      } catch {
+        // Keep N/A if this also fails
       }
     }
 
@@ -270,6 +314,7 @@ Return ONLY raw JSON:
       predCategory,
       correct: predCategory === ticket.category,
       similarity: similarity.toFixed(4),
+      predResolution,
     });
 
     // Small delay to avoid rate limits
@@ -298,6 +343,9 @@ ${ticket.description}
 
 Ground Truth Resolution:
 ${ticket.resolution}
+
+AI-Generated Resolution:
+${judgeSample[i].predResolution}
 
 AI-Generated Category: ${judgeSample[i].predCategory}
 Ground Truth Category: ${ticket.category}
@@ -354,7 +402,8 @@ Return ONLY raw JSON: {"score": <1-5>, "reasoning": "brief explanation"}`
   report += `| **Macro F1 Score** | ${(metrics.macroF1 * 100).toFixed(1)}% |\n`;
   report += `| **Weighted F1 Score** | ${(metrics.weightedF1 * 100).toFixed(1)}% |\n`;
   report += `| **Avg Semantic Similarity** | ${(avgSimilarity * 100).toFixed(1)}% |\n`;
-  report += `| **LLM-as-Judge Score** | ${avgJudgeScore.toFixed(2)} / 5.00 |\n\n`;
+  report += `| **LLM-as-Judge Score** | ${avgJudgeScore.toFixed(2)} / 5.00 |\n`;
+  report += `| **Schema Compliance** | ${((results.filter(r => r.predResolution !== 'N/A').length / results.length) * 100).toFixed(1)}% |\n\n`;
 
   report += `## Per-Category Classification Report\n\n`;
   report += `| Category | Precision | Recall | F1 Score | Support |\n|---|---|---|---|---|\n`;

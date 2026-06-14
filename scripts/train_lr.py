@@ -1,77 +1,128 @@
-import pandas as pd
-import numpy as np
 import json
 import os
+import csv
+import io
+import sys
+# Force disable PyTorch dynamo to prevent MemoryError during import
+os.environ["TORCH_COMPILE_DISABLE"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 from sentence_transformers import SentenceTransformer
-from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 
 def train():
     print("Loading dataset...")
-    file_path = '../data/english_tickets.csv'
-    df = pd.read_csv(file_path)
+    file_path = '../data/merged_tickets.csv'
+    
+    # Map categories to integer labels
+    categories = ['Application', 'Database', 'Network', 'Access Management', 'Infrastructure', 'Security']
+    category_to_id = {cat: i for i, cat in enumerate(categories)}
+    id2cat = {i: c for c, i in enumerate(categories)}
 
-    # Handle NaN values to avoid float type error in sentence-transformers
-    df['Subject'] = df['Subject'].fillna('')
-    df['Body'] = df['Body'].fillna('')
-    df['text'] = df['Subject'] + " " + df['Body']
-    df['text'] = df['text'].fillna('')
-    # The Category Compressor
+    texts = []
+    labels = []
+    
+    print("Parsing CSV via standard library to conserve memory...")
+    # Increase CSV field size limit
+    csv.field_size_limit(sys.maxsize)
+    
     category_mapping = {
+        'Application': 'Application',
+        'Infrastructure': 'Infrastructure',
+        'Security': 'Security',
+        'Database': 'Database',
+        'Network': 'Network',
+        'Access Management': 'Access Management',
         'Technical Support': 'Application',
         'IT Support': 'Infrastructure',
         'Service Outages and Maintenance': 'Network',
         'Human Resources': 'Access Management',
-        # Drop non-IT queues to keep the model strictly focused on technical triage
-        'Billing and Payments': 'DROP',
-        'Customer Service': 'DROP',
-        'Returns and Exchanges': 'DROP',
-        'Sales and Pre-Sales': 'DROP',
-        'Product Support': 'Application',
-        'General Inquiry': 'DROP'
+        'Product Support': 'Application'
     }
+    
+    category_counts = {cat: 0 for cat in categories}
+    MAX_PER_CATEGORY = 1000
 
-    # Apply the mapping
-    df['Mapped_Category'] = df['Queue'].map(category_mapping)
+    print("Loading all tickets into memory for deterministic shuffling...")
+    all_rows = []
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            all_rows.append(row)
 
-    # Drop the non-IT rows
-    df = df[df['Mapped_Category'] != 'DROP']
-    df = df.dropna(subset=['Mapped_Category'])
+    import random
+    # Shuffle deterministically with a fixed seed so the cache remains stable
+    random.seed(42)
+    random.shuffle(all_rows)
 
-    # Map categories to integer labels
-    categories = df['Mapped_Category'].unique().tolist()
-    cat2id = {c: i for i, c in enumerate(categories)}
-    id2cat = {i: c for c, i in cat2id.items()}
-    y = df['Mapped_Category'].map(cat2id).values
+    for row in all_rows:
+        raw_queue = row.get('Queue', '')
+        mapped_cat = category_mapping.get(raw_queue)
+        if mapped_cat and category_counts[mapped_cat] < MAX_PER_CATEGORY:
+            subj = row.get('Subject', '') or ''
+            body = row.get('Body', '') or ''
+            text = subj + " " + body
+            if text.strip():
+                texts.append(text)
+                labels.append(category_to_id[mapped_cat])
+                category_counts[mapped_cat] += 1
 
+    print(f"Loaded {len(texts)} balanced IT tickets (max {MAX_PER_CATEGORY} per class, shuffled).")
     print("Loading embedding model (BAAI/bge-small-en-v1.5)...")
     model = SentenceTransformer("BAAI/bge-small-en-v1.5")
     import numpy as np
-    emb_cache = '../data/embeddings_cache.npy'
+    emb_cache = '../data/embeddings_cache_shuffled.npy'
+    # Delete stale cache if dataset has changed
+    if os.path.exists(emb_cache):
+        cache_size = os.path.getsize(emb_cache)
+        expected_size = len(texts) * 384 * 4  # float32 = 4 bytes
+        if abs(cache_size - expected_size) > expected_size * 0.1:
+            print("Embeddings cache is stale (dataset size changed). Regenerating...")
+            os.remove(emb_cache)
+    
     if os.path.exists(emb_cache):
         print("Loading embeddings from cache...")
         X = np.load(emb_cache)
     else:
-        print("Generating embeddings for training data (this may take a minute)...")
-        X = model.encode(df['text'].tolist(), normalize_embeddings=True)
+        import gc
+        import torch
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            
+        print(f"Generating embeddings for {len(texts)} training samples in chunks of 500...")
+        chunk_size = 500
+        embeddings_list = []
+        for start_idx in range(0, len(texts), chunk_size):
+            chunk_texts = texts[start_idx:start_idx + chunk_size]
+            print(f"  Encoding chunk {start_idx // chunk_size + 1}/{(len(texts) + chunk_size - 1) // chunk_size}...")
+            with torch.no_grad():
+                chunk_embeddings = model.encode(chunk_texts, batch_size=8, show_progress_bar=False, normalize_embeddings=True)
+            embeddings_list.append(chunk_embeddings)
+            del chunk_embeddings
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                
+        X = np.vstack(embeddings_list)
         np.save(emb_cache, X)
+    
+    y = np.array(labels)
 
-
-    print("Training Logistic Regression Classifier...")
-    from sklearn.linear_model import LogisticRegression
-    # Use C=100.0 to reduce regularization and sharpen probabilities
-    clf = LogisticRegression(C=100.0, class_weight='balanced', max_iter=2000, multi_class='multinomial')
+    print("Training Multi-Layer Perceptron classifier...")
+    clf = MLPClassifier(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42)
     clf.fit(X, y)
 
     score = clf.score(X, y)
     print(f"Training Accuracy: {score:.4f}")
 
     # ═══════════════════════════════════════════════════════════
-    # Export 1: JSON Weights (Legacy fallback for Vercel)
+    # Export 1: JSON Weights (MLP forward pass serialization)
     # ═══════════════════════════════════════════════════════════
     print("Exporting Weights and Intercepts to JSON...")
     
-    weights = clf.coef_.tolist()
-    intercepts = clf.intercept_.tolist()
+    weights = [w.tolist() for w in clf.coefs_]
+    intercepts = [b.tolist() for b in clf.intercepts_]
 
     export_data = {
         "classes": categories,

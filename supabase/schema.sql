@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS live_tickets (
   confidence_score float8 NOT NULL CHECK (confidence_score >= 0.0 AND confidence_score <= 1.0),
   repeat_count int NOT NULL DEFAULT 0,
   automation_suggested boolean NOT NULL DEFAULT false,
-  embedding vector(384)
+  embedding vector(384),
+  resolution_tier text
 );
 
 -- Table for Master Incidents (Agentic Layer)

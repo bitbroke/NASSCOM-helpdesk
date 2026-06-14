@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CSV_FILE = path.join(__dirname, '..', 'data', 'english_tickets.csv');
+const CSV_FILE = path.join(__dirname, '..', 'data', 'merged_tickets.csv');
 const FALLBACK_CSV = path.join(__dirname, '..', 'data', 'english_tickets.csv');
 
 env.allowLocalModels = true;
@@ -47,15 +47,24 @@ function parseCSV(text) {
   const COLS = 16; // The CSV has 16 columns
   
   const category_mapping = {
+    // Direct mappings (merged_tickets.csv already uses these)
+    'Application': 'Application',
+    'Infrastructure': 'Infrastructure',
+    'Security': 'Security',
+    'Database': 'Database',
+    'Network': 'Network',
+    'Access Management': 'Access Management',
+    // Legacy mappings from english_tickets.csv
     'Technical Support': 'Application',
     'IT Support': 'Infrastructure',
     'Service Outages and Maintenance': 'Network',
     'Human Resources': 'Access Management',
+    'Product Support': 'Application',
+    // Drop non-IT queues
     'Billing and Payments': 'DROP',
     'Customer Service': 'DROP',
     'Returns and Exchanges': 'DROP',
     'Sales and Pre-Sales': 'DROP',
-    'Product Support': 'Application',
     'General Inquiry': 'DROP'
   };
 
