@@ -2,11 +2,13 @@ import { pipeline, env } from '@xenova/transformers';
 import path from 'path';
 import fs from 'fs';
 
+import os from 'os';
+
 // Configure transformers to not use local downloaded models if they conflict
 // and to allow remote fetching on first initialization.
 env.allowLocalModels = true;
 env.useBrowserCache = false; 
-env.cacheDir = '/tmp';
+env.cacheDir = path.join(os.tmpdir(), 'xenova-cache');
 // Force WASM/Web backend for ONNX to avoid native .node dependency issues on Vercel
 (env.backends as any).onnx.wasm.numThreads = 1;
 

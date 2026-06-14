@@ -1,1 +1,1 @@
-{"classes": ["Application", "Network", "Infrastructure", "Access Management"], "id2cat": {"0": "Application", "1": "Network", "2": "Infrastructure", "3": "Access Management"}}
+{"classes": ["Application", "Database", "Network", "Access Management", "Infrastructure", "Security"], "id2cat": {"Application": 0, "Database": 1, "Network": 2, "Access Management": 3, "Infrastructure": 4, "Security": 5}}

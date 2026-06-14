@@ -12,6 +12,7 @@ interface DualLogTerminalProps {
     keywords: string[];
     tool_data: string;
   } | null;
+  streamingOutput?: string;
 }
 
 const SugoiDictionary: Record<string, string> = {
@@ -45,7 +46,7 @@ function translateLog(log: string): string {
   return log;
 }
 
-export function DualLogTerminal({ thoughtProcess, loading, agenticTrace }: DualLogTerminalProps) {
+export function DualLogTerminal({ thoughtProcess, loading, agenticTrace, streamingOutput }: DualLogTerminalProps) {
   const [showNerdLogs, setShowNerdLogs] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +124,7 @@ export function DualLogTerminal({ thoughtProcess, loading, agenticTrace }: DualL
             )}
 
             <div className="space-y-1.5 pt-2">
-              {thoughtProcess.length === 0 && !loading && !agenticTrace && (
+              {thoughtProcess.length === 0 && !loading && !agenticTrace && !streamingOutput && (
                 <div className="text-white/10 italic font-light">-- system_idle: awaiting_input_stream --</div>
               )}
               
@@ -134,8 +135,15 @@ export function DualLogTerminal({ thoughtProcess, loading, agenticTrace }: DualL
                   <span className="text-white/80">{step}</span>
                 </motion.div>
               ))}
+
+              {streamingOutput && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 p-3 bg-black/40 border border-white/10 rounded-lg text-emerald-400 font-mono text-[10px] whitespace-pre-wrap">
+                  {streamingOutput}
+                  <span className="animate-pulse ml-1 inline-block w-1.5 h-3 bg-emerald-500"/>
+                </motion.div>
+              )}
             </div>
-            {loading && (
+            {loading && !streamingOutput && (
               <div className="mt-4 flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-emerald-500 animate-pulse" />
                 <div className="w-2 h-0.5 bg-white/10 animate-pulse delay-75" />

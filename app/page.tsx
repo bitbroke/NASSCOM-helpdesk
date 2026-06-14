@@ -81,6 +81,7 @@ export default function SubmissionPortal() {
   const [isAirGapped, setIsAirGapped] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ticketStatus, setTicketStatus] = useState<string | null>(null);
+  const [ticketBadge, setTicketBadge] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function SubmissionPortal() {
   const [predictedCategory, setPredictedCategory] = useState<string | null>(null);
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [currentTyping, setCurrentTyping] = useState<string | null>(null);
+  const [streamingOutput, setStreamingOutput] = useState("");
   const [agenticTrace, setAgenticTrace] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authRedirectPath, setAuthRedirectPath] = useState('/');
@@ -204,8 +206,10 @@ export default function SubmissionPortal() {
   function clearForm() {
     setIssueText(""); setLogText(""); setTicketStatus(null);
     setThoughtProcess([]); setFinalResolution(null);
+    setThoughtProcess([]); setFinalResolution(null);
     setConfidenceScore(null); setPredictedCategory(null); resetRPG();
-    setMood("idle"); setActiveTab("stream"); setAgenticTrace(null);
+    setMood("idle"); setActiveTab("stream"); setAgenticTrace(null); setTicketBadge(null);
+    setStreamingOutput("");
     setLastSubmittedIssue("");
     setRepeatSubmitCount(0);
     window.dispatchEvent(new CustomEvent("sugoi-repeat-submit", { detail: { count: 0 } }));
@@ -226,9 +230,9 @@ export default function SubmissionPortal() {
     }
 
     setProcessing(true);
-    setLoading(true); setTicketStatus(null); setThoughtProcess([]);
+    setLoading(true); setTicketStatus(null); setThoughtProcess([]); setTicketBadge(null);
     setFinalResolution(null); setConfidenceScore(null); setPredictedCategory(null);
-    setAgenticTrace(null);
+    setAgenticTrace(null); setStreamingOutput("");
     resetRPG(); setMood("thinking"); setActiveTab("stream");
     setThoughtProcess(["System initialized. Opening secure pipeline..."]);
 
@@ -241,39 +245,73 @@ export default function SubmissionPortal() {
       }
 
       setChaosLevel(game.chaosLevel + 15);
-      const data = await processTicketWithFallback(issueText, logText, !isAirGapped);
-      setChaosLevel(game.chaosLevel - 10);
-      setAgenticTrace({
-        action: data.supervisor_action,
-        keywords: data.keywords,
-        tool_data: data.tool_data
-      });
-      setThoughtProcess(data.thoughtProcess || []);
-      setPredictedCategory(data.category || null);
-
-      if (data.status === "SUCCESS") {
-        setTicketStatus("AUTO_RESOLVED");
-        setFinalResolution(data.resolution);
-        setConfidenceScore(data.confidenceScore);
-
-        if (data.confidenceScore) {
-          setPower(Math.floor(data.confidenceScore * 100));
-          damageEnemy(Math.floor(data.confidenceScore * 100));
+      const data = await processTicketWithFallback(issueText, logText, !isAirGapped, {
+        onThought: (t) => {
+          setThoughtProcess(prev => [...prev, t]);
+        },
+        onToken: (tok) => {
+          setStreamingOutput(prev => prev + tok);
+        },
+        onMetadata: (cat, conf) => {
+          setPredictedCategory(cat);
+          setConfidenceScore(conf);
+          setPower(Math.floor(conf * 100));
+          damageEnemy(Math.floor(conf * 100));
         }
+      });
+      setChaosLevel(game.chaosLevel - 10);
+      
+      // Mock the agentic trace since we integrated tool calling inside the API Route
+      // and we display it live in thoughtProcess!
+      setAgenticTrace({
+        action: "DIAGNOSE_AND_RESOLVE",
+        keywords: [data.category || "General"],
+        tool_data: "See system telemetry for live tools."
+      });
 
-        setMood("happy");
+      if (data.status === "SUCCESS" || data.status === "AUTO_RESOLVED" || data.status === "VAULT_RESOLVED") {
+        setTicketStatus("AUTO_RESOLVED");
+        setTicketBadge(data.badge || "System Resolved");
+        setFinalResolution(data.resolution);
+        
+        // Tier 0 & 1 (Instant Match): success arm-waving animation
+        if (data.status === "VAULT_RESOLVED" || data.badge?.includes("Tier 1") || data.badge?.includes("Tier 0")) {
+          setMood("happy");
+        } else {
+          setMood("happy");
+        }
+        setTimeout(() => setActiveTab("resolution"), 600);
+      } else if (data.status === "NEEDS_HUMAN") {
+        setTicketStatus("NEEDS_HUMAN");
+        setTicketBadge(data.badge || "Review Recommended");
+        setFinalResolution(data.resolution);
+        setMood("thinking");
         setTimeout(() => setActiveTab("resolution"), 600);
       } else {
+        // Tier 3 (Shadow Fallback / Out-of-Scope Garbage Filter)
         setTicketStatus("ESCALATED");
-        setFinalResolution("Complexity exceeds autonomous limits. Routed to L2 human expert.");
-        setConfidenceScore(data.confidenceScore);
-        setMood("crying");
+        setTicketBadge(data.badge || "Human Intervention Required");
+        setFinalResolution(data.resolution || "Complexity exceeds autonomous limits. Routed to L2 human expert.");
+        
+        if (data.badge === "Invalid Request") {
+          setMood("teased"); // Trigger teased/bored expression for prompt injection/out-of-scope garbage
+        } else {
+          setMood("crying"); // Shivering/distressed expression for standard escalation
+        }
       }
     } catch (err: any) {
-      setTicketStatus("ESCALATED");
-      setFinalResolution(`Error: ${err.message || "Unknown error occurred"}`);
-      setMood("crying");
-      toast.error("Process failed. Escalating...");
+      if (err.message === "RATE_LIMIT_EXCEEDED") {
+        setTicketStatus("ESCALATED");
+        setTicketBadge("Rate Limited");
+        setFinalResolution("Please wait. You have exceeded the rate limit of 5 requests per minute. Take a break and let Sugoi rest for a bit before trying again.");
+        setMood("teased");
+        toast.error("Rate limit exceeded. Too many requests.");
+      } else {
+        setTicketStatus("ESCALATED");
+        setFinalResolution(`Error: ${err.message || "Unknown error occurred"}`);
+        setMood("crying");
+        toast.error("Process failed. Escalating...");
+      }
     } finally {
       setLoading(false);
       setProcessing(false);
@@ -592,7 +630,7 @@ export default function SubmissionPortal() {
                           animate={settings.animationsEnabled ? { opacity: 1 } : undefined}
                           exit={settings.animationsEnabled ? { opacity: 0 } : undefined}
                           className="absolute inset-0 p-4 overflow-y-auto custom-scrollbar">
-                          <DualLogTerminal thoughtProcess={thoughtProcess} loading={loading} agenticTrace={agenticTrace} />
+                          <DualLogTerminal thoughtProcess={thoughtProcess} loading={loading} agenticTrace={agenticTrace} streamingOutput={streamingOutput} />
                         </motion.div>
                       ) : (
                         <motion.div key="resolution"
@@ -603,13 +641,13 @@ export default function SubmissionPortal() {
                           {finalResolution ? (
                             <div className="flex flex-col gap-4">
                               <div className="flex items-center gap-2 mb-2 pb-3" style={{ borderBottom: "1px solid rgba(212,160,23,0.1)" }}>
-                                {ticketStatus === "AUTO_RESOLVED" ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <ShieldAlert className="w-4 h-4 text-red-500" />}
-                                <span className="text-xs font-bold" style={{ color: ticketStatus === "AUTO_RESOLVED" ? "#16a34a" : "#dc2626" }}>
-                                  {ticketStatus === "AUTO_RESOLVED" ? "Auto-Resolved" : "Escalated to Human"}
+                                {ticketStatus === "AUTO_RESOLVED" ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : ticketStatus === "NEEDS_HUMAN" ? <ShieldAlert className="w-4 h-4 text-amber-500" /> : <ShieldAlert className="w-4 h-4 text-red-500" />}
+                                <span className="text-xs font-bold" style={{ color: ticketStatus === "AUTO_RESOLVED" ? "#16a34a" : ticketStatus === "NEEDS_HUMAN" ? "#d97706" : "#dc2626" }}>
+                                  {ticketStatus === "AUTO_RESOLVED" ? "Auto-Resolved" : ticketStatus === "NEEDS_HUMAN" ? "Review Recommended" : "Escalated to Human"}
                                 </span>
-                                {predictedCategory && (
-                                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold tracking-wide uppercase text-[9px] ml-auto">
-                                    {predictedCategory}
+                                {ticketBadge && (
+                                  <Badge variant="outline" className={`font-bold tracking-wide uppercase text-[9px] ml-auto ${ticketStatus === 'AUTO_RESOLVED' ? 'bg-green-50 text-green-700 border-green-200' : ticketStatus === 'NEEDS_HUMAN' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                    {ticketBadge}
                                   </Badge>
                                 )}
                               </div>

@@ -46,8 +46,8 @@ export function rerank(docs: any[], query: string): any[] {
       const errorCodeScore = queryErrorCodes.size > 0 ? errorCodeOverlap / queryErrorCodes.size : 0;
 
       // 3. Bigram overlap for phrase matching
-      const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
-      const docWords = docText.split(/\s+/).filter(w => w.length > 2);
+      const queryWords = queryLower.split(/\s+/).filter((w: string) => w.length > 2);
+      const docWords = docText.split(/\s+/).filter((w: string) => w.length > 2);
       const queryBigrams = new Set<string>();
       for (let i = 0; i < queryWords.length - 1; i++) queryBigrams.add(`${queryWords[i]} ${queryWords[i + 1]}`);
       const docBigrams = new Set<string>();
