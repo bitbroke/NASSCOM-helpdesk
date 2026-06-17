@@ -228,20 +228,39 @@ export async function POST(req: NextRequest) {
             console.log("Triggering Council Duel...");
             const councilOutput = await runCouncilDuel(sanitizedText, finalCategory, embeddingArray || []);
 
-            if (councilOutput.confidence_score >= 75) {
-              push({ type: "thought", content: `[Tier 2] Council Verified (${councilOutput.confidence_score}%).` });
-              logLiveTicket(sanitizedText, finalCategory, "AUTO_RESOLVED", councilOutput.confidence_score / 100, "Tier 2: Council", embeddingArray || undefined);
-              push({ type: "resolution_complete", text: councilOutput.resolution, status: "AUTO_RESOLVED", badge: "Tier 2: Council Auto-Resolve" });
+            if (councilOutput.classification === "OUT_OF_SCOPE") {
+              push({ type: "thought", content: `[Tier 2] Non-technical request detected. Marking as Out of Scope.` });
+              logLiveTicket(sanitizedText, "Out-of-Scope", "AUTO_RESOLVED", 0.0, "Tier 2: Out of Scope", embeddingArray || undefined);
+              push({ type: "resolution_complete", text: councilOutput.resolution, status: "AUTO_RESOLVED", badge: "Invalid Request" });
               controller.close();
               return;
-            } else if (councilOutput.confidence_score >= 40) {
-              push({ type: "thought", content: "[Tier 2] Review Recommended (" + councilOutput.confidence_score + "%)." });
-              logLiveTicket(sanitizedText, finalCategory, "AUTO_RESOLVED", councilOutput.confidence_score / 100, "Tier 2: Council", embeddingArray || undefined);
-              push({ type: "resolution_complete", text: `> **Review Recommended (${councilOutput.confidence_score}%)**\n\n${councilOutput.resolution}`, status: "AUTO_RESOLVED", badge: "Tier 2: Council Review" });
+            } else if (councilOutput.classification === "UNSOLVABLE_TECHNICAL") {
+              push({ type: "thought", content: `[Tier 2] Technical but unsolvable request. Escalating to Human Review.` });
+              logLiveTicket(sanitizedText, councilOutput.category, "NEEDS_HUMAN", 0.0, "Tier 2: Unsolvable", embeddingArray || undefined);
+              push({ type: "resolution_complete", text: councilOutput.resolution, status: "ESCALATED", badge: "Human Review Required" });
               controller.close();
               return;
             } else {
-              push({ type: "thought", content: `[Tier 2] Council confidence too low (${councilOutput.confidence_score}%). Falling to Tier 3.` });
+              // SOLVABLE_TECHNICAL
+              if (councilOutput.confidence_score >= 75) {
+                push({ type: "thought", content: `[Tier 2] Council Verified (${councilOutput.confidence_score}%).` });
+                logLiveTicket(sanitizedText, councilOutput.category, "AUTO_RESOLVED", councilOutput.confidence_score / 100, "Tier 2: Council", embeddingArray || undefined);
+                push({ type: "resolution_complete", text: councilOutput.resolution, status: "AUTO_RESOLVED", badge: "Tier 2: Council Auto-Resolve" });
+                controller.close();
+                return;
+              } else if (councilOutput.confidence_score >= 40) {
+                push({ type: "thought", content: "[Tier 2] Review Recommended (" + councilOutput.confidence_score + "%)." });
+                logLiveTicket(sanitizedText, councilOutput.category, "AUTO_RESOLVED", councilOutput.confidence_score / 100, "Tier 2: Council", embeddingArray || undefined);
+                push({ type: "resolution_complete", text: `> **Review Recommended (${councilOutput.confidence_score}%)**\n\n${councilOutput.resolution}`, status: "AUTO_RESOLVED", badge: "Tier 2: Council Review" });
+                controller.close();
+                return;
+              } else {
+                push({ type: "thought", content: `[Tier 2] Council confidence too low (${councilOutput.confidence_score}%). Escalating to Human Review.` });
+                logLiveTicket(sanitizedText, councilOutput.category, "NEEDS_HUMAN", councilOutput.confidence_score / 100, "Tier 2: Unsolvable", embeddingArray || undefined);
+                push({ type: "resolution_complete", text: `### Ticket Escalated\n\nThis technical issue has been escalated to human review due to low model confidence (${councilOutput.confidence_score}%).\n\n${councilOutput.resolution}`, status: "ESCALATED", badge: "Human Review Required" });
+                controller.close();
+                return;
+              }
             }
           } catch (llmErr: any) {
             console.error("[COUNCIL ERROR]:", llmErr);
