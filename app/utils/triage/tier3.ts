@@ -1,5 +1,9 @@
 export function getShadowTemplate(ticketText: string, guessedCategory: string) {
-  const technicalKeywords = ['error', 'fail', 'login', 'server', 'network', 'database', 'app', 'crash', 'dns', 'password', 'mfa', 'permission'];
+  const technicalKeywords = [
+    'error', 'fail', 'login', 'server', 'network', 'database', 'app', 'crash', 'dns', 
+    'password', 'mfa', 'permission', 'vpn', 'disconnect', 'slow', 'down', 'memory leak', 
+    'deadlock', 'status', 'connection', 'port', 'ip'
+  ];
   const lowerText = ticketText.toLowerCase();
   
   // Check if the ticket contains baseline technical keywords
@@ -8,7 +12,7 @@ export function getShadowTemplate(ticketText: string, guessedCategory: string) {
 
   if (!hasTechnicalContext) {
     return {
-      status: "ESCALATED",
+      status: "AUTO_RESOLVED",
       category: "Out-of-Scope",
       confidence: 0.0,
       badge: "Invalid Request",
@@ -16,7 +20,7 @@ export function getShadowTemplate(ticketText: string, guessedCategory: string) {
 ### Sugoi Analysis: Request Out of Scope
 Look, I am a brilliant enterprise IT helper, not a miracle worker or a matchmaking app. Your current issue cannot be resolved by debugging a database or restarting a router. 
 
-**System Action:** This ticket has been marked as a non-technical anomaly with **0% confidence** and successfully routed to the human garbage collection queue. Please limit submissions to enterprise infrastructure faults.
+**System Action:** This ticket has been marked as a non-technical anomaly with **0% confidence**. Please limit submissions to enterprise infrastructure faults.
       `.trim()
     };
   }
